@@ -1,0 +1,490 @@
+import React, { useState } from 'react';
+import { translations } from '../translations';
+import { Language, Page, BlogArticle, SupportTicket } from '../types';
+import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download } from 'lucide-react';
+import CheckoutModal from './CheckoutModal';
+
+interface BlogFAQPagesProps {
+  language: Language;
+  page: Page;
+  setCurrentPage: (page: Page) => void;
+  onSubmitTicket: (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => void;
+  userEmail?: string;
+  userUid?: string;
+  onAddCredits?: (amount: number) => void;
+  onOpenLogin?: () => void;
+}
+
+export default function BlogFAQPages({
+  language,
+  page,
+  setCurrentPage,
+  onSubmitTicket,
+  userEmail,
+  userUid,
+  onAddCredits,
+  onOpenLogin,
+}: BlogFAQPagesProps) {
+  const t = translations[language];
+
+  // Contact form state
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [contactEmail, setContactEmail] = useState(userEmail || '');
+  const [ticketSuccess, setTicketSuccess] = useState(false);
+  const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
+  const [checkoutModal, setCheckoutModal] = useState<{
+    isOpen: boolean;
+    itemName: string;
+    price: number;
+    onSuccess: () => void;
+  } | null>(null);
+
+  const handleBuyPack = (amount: number, cost: number) => {
+    if (!userUid || userUid === 'guest') {
+      if (onOpenLogin) {
+        onOpenLogin();
+      }
+      return;
+    }
+    
+    setCheckoutModal({
+      isOpen: true,
+      itemName: language === 'ar' ? `شحن ${amount} رصيد ذكاء اصطناعي` : `${amount} AI Generation Credits`,
+      price: cost,
+      onSuccess: () => {
+        if (onAddCredits) {
+          onAddCredits(amount);
+          setPurchaseSuccess(language === 'ar' ? `تم شراء ${amount} رصيد بنجاح! شكراً لك.` : `Successfully purchased ${amount} credits! Thank you.`);
+          setTimeout(() => setPurchaseSuccess(null), 4000);
+        }
+      }
+    });
+  };
+
+  const blogArticles: BlogArticle[] = [
+    {
+      id: 'blog-1',
+      titleEn: 'How to Choose the Perfect Brand Name for Your Startup',
+      titleAr: 'كيف تختار الاسم التجاري المثالي لشركتك الناشئة',
+      excerptEn: 'Learn the principles of modern brand naming, including linguistics, domain availability, and memorability.',
+      excerptAr: 'تعرف على أساسيات اختيار الأسماء التجارية الحديثة، بما في ذلك اللغويات، وتوافر النطاق، وسهولة الحفظ.',
+      contentEn: 'Choosing a startup name can define your trajectory. Start with simple phonetics, ensure semantic alignment, check trademark registries, and secure modern domains.',
+      contentAr: 'اختيار اسم شركتك الناشئة يحدد مسارك. ابدأ بالصوتيات البسيطة، وتأكد من المحاذاة الدلالية، وتحقق من سجلات العلامات التجارية، وضمن النطاقات الحديثة.',
+      date: '2026-07-01',
+      image: 'https://picsum.photos/seed/naming/600/400',
+      author: 'Aria Carter'
+    },
+    {
+      id: 'blog-2',
+      titleEn: 'The Psychology of Color in Logo Design',
+      titleAr: 'سيكولوجية الألوان في تصميم الشعارات',
+      excerptEn: 'Discover how gold, blue, and black gradients communicate luxury, technology, and trust to your prospective audience.',
+      excerptAr: 'اكتشف كيف تعبر تدرجات اللون الذهبي والأزرق والأسود عن الفخامة والتقنية والثقة لجمهورك المحتمل.',
+      contentEn: 'Colors elicit immediate cognitive responses. Blue triggers reliability, gold represents royal prestige, while red represents visceral power and speed.',
+      contentAr: 'تثير الألوان استجابات معرفية فورية. يثير اللون الأزرق الثقة والموثوقية، ويمثل اللون الذهبي المكانة الفاخرة، بينما يمثل اللون الأحمر القوة والسرعة.',
+      date: '2026-06-25',
+      image: 'https://picsum.photos/seed/colors/600/400',
+      author: 'Marcus Vance'
+    }
+  ];
+
+  const handleTicketSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subject.trim() || !message.trim() || !contactEmail.trim()) return;
+
+    onSubmitTicket({
+      userId: userUid || 'guest',
+      userEmail: contactEmail,
+      subject,
+      message,
+    });
+
+    setSubject('');
+    setMessage('');
+    setTicketSuccess(true);
+    setTimeout(() => setTicketSuccess(false), 4000);
+  };
+
+  if (page === 'features') {
+    const isAr = language === 'ar';
+    return (
+      <div className="space-y-12 animate-fade-in py-8">
+        <div className="text-center max-w-2xl mx-auto space-y-4">
+          <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
+            {isAr ? 'أدوات بناء العلامة التجارية الشاملة' : 'Comprehensive Brand Forge Tools'}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isAr ? 'ينسق BrandForge AI مولدات عصبية متخصصة لبناء هويات بصرية دقيقة وعالية الدقة.' : 'BrandForge AI coordinates specialized neural generators to construct pristine, high-resolution visual identities.'}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {[
+            { title: t.nameGen, desc: isAr ? 'ينشئ ما يصل إلى 10 نماذج أسماء تجارية مطابقة لمعايير الصناعة والبلدان المستهدفة.' : 'Generates up to 10 contextual business name models matching standard industry parameters and target countries.', icon: <Award className="w-6 h-6" /> },
+            { title: t.logoGen, desc: isAr ? 'يصمم شعارات دقيقة بصيغة XML/SVG مباشرة، قابلة للتنزيل مع أنماط متجاوبة وتخطيطات شفافة.' : 'Crafts real vector-precision XML/SVG logo marks directly, fully downloadable with responsive styles and optional transparent layouts.', icon: <Star className="w-6 h-6" /> },
+            { title: t.sloganGen, desc: isAr ? 'يخلق خيارات متعددة لشعارات تسويقية لا تُنسى وعبارات جذابة تتماشى مع النبرة العاطفية للعلامة.' : 'Creates multiple options of memorable marketing slogans and catchy taglines aligned with emotional tone profiles.', icon: <MessageSquare className="w-6 h-6" /> },
+            { title: t.brandKit, desc: isAr ? 'ينشئ طباعة كاملة ولوحات ألوان سداسية عشرية مخصصة تعكس النمط الأساسي لعلامتك التجارية.' : 'Generates full typography and custom hexadecimal color swatches reflecting your brand archetype.', icon: <PaletteIcon className="w-6 h-6" /> },
+            { title: isAr ? 'التحقق من توفر النطاق (Domain)' : 'Domain Availability Check', desc: isAr ? 'تحقق على الفور من توفر أسماء النطاقات المقترحة مباشرة ضمن نتائج التوليد.' : 'Instantly check the availability of suggested domain names right within the generation results.', icon: <Globe className="w-6 h-6" /> },
+            { title: isAr ? 'أصول منصات التواصل الاجتماعي' : 'Social Media Kit Generation', desc: isAr ? 'قم بإنشاء حزمة متناسقة لمنصات التواصل الاجتماعي تتضمن الصور الشخصية وصور الغلاف وقوالب المنشورات.' : 'Generate a cohesive social media branding kit including profile pictures, cover photos, and post templates.', icon: <Layout className="w-6 h-6" /> },
+            { title: isAr ? 'تصدير الحزمة إلى PDF' : 'Brand Kit PDF Export', desc: isAr ? 'قم بتصدير إرشادات الهوية البصرية لعلامتك التجارية بشكل احترافي مباشرة إلى ملف PDF.' : 'Export your complete, professionally formatted brand identity guidelines directly to PDF.', icon: <Download className="w-6 h-6" /> },
+            { title: isAr ? 'منشئ لوحات الألوان التفاعلي' : 'Interactive Color Palette Generator', desc: isAr ? 'صمم لوحات ألوان هويتك التجارية التفاعلية بالكامل، اقفل الألوان المفضلة، عاينها مباشرة على قوالب واجهات حية، أو ولد ألوان ملهمة بمساعدة الذكاء الاصطناعي.' : 'Design interactive color schemes. Lock/unlock favorite swatches, fine-tune using precise HSL sliders, generate thematic palettes with AI, and view real-time live mockup UI previews.', icon: <Sparkles className="w-6 h-6" /> },
+            { title: isAr ? 'مشاركة الأصول بروابط عامة' : 'Public Brand Asset Sharing', desc: isAr ? 'احصل على روابط ويب عامة فورية لمشاركة الهويات البصرية والشعارات والتصميمات مع العملاء وأعضاء فريق العمل بسهولة.' : 'Generate instant, shareable public showcase web links for your branding guidelines and logo assets to present directly to clients or team members.', icon: <Globe className="w-6 h-6" /> }
+          ].map((item, idx) => (
+            <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl flex gap-4 items-start hover:shadow-md transition">
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3 rounded-2xl text-indigo-600 dark:text-indigo-400">
+                {item.icon}
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-display font-bold text-slate-900 dark:text-white text-lg">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {item.desc}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (page === 'pricing') {
+    const isAr = language === 'ar';
+    return (
+      <div className="space-y-12 animate-fade-in py-8">
+        <div className="text-center max-w-2xl mx-auto space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+            <Coins className="w-3.5 h-3.5 text-amber-500" />
+            <span>{isAr ? 'نظام الدفع حسب الاستخدام' : 'Pay-As-You-Go Credits'}</span>
+          </div>
+          <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
+            {isAr ? 'شراء رصيد التصميم والهوية' : 'Purchase AI Design Credits'}
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+            {isAr 
+              ? 'احصل على رصيد إضافي لتصميم الأسماء، الشعارات، والهويات البصرية الكاملة فوراً. لا توجد اشتراكات متكررة، ورصيدك صالح للأبد دون انتهاء صلاحية!'
+              : 'Acquire credits immediately to forge professional brand names, vector logos, slogans, and complete branding kits. No monthly plans, no surprise bills, credits never expire!'}
+          </p>
+        </div>
+
+        {purchaseSuccess && (
+          <div className="max-w-md mx-auto bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 p-4 rounded-2xl text-center text-xs font-semibold shadow-sm animate-pulse">
+            {purchaseSuccess}
+          </div>
+        )}
+
+        {/* Credit Packs Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+          
+          {/* Starter Pack */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-6 rounded-3xl space-y-5 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="space-y-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? 'حزمة البداية' : 'Starter Pack'}</span>
+              <h3 className="text-xl font-display font-bold text-slate-850 dark:text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-indigo-500" />
+                <span>100 {t.credits}</span>
+              </h3>
+              <p className="text-xs text-slate-500">{isAr ? 'مثالي لتجربة المحرك وابتكار أصول سريعة لعلامة واحدة.' : 'Perfect to test the forge and secure single brand ideas.'}</p>
+              <div className="py-1">
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$5</span>
+                <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
+              </div>
+              <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد حتى 50 اسم تجاري' : 'Generate up to 50 names'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد حتى 33 شعار فيكتور' : 'Forge up to 33 vector logos'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'الرصيد صالح للأبد' : 'Credits never expire'}</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleBuyPack(100, 5)}
+              className="w-full mt-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-850 dark:text-slate-200 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
+            >
+              {isAr ? 'شراء الحزمة' : 'Buy Pack'}
+            </button>
+          </div>
+
+          {/* Growth Pack */}
+          <div className="bg-white dark:bg-slate-900 border-2 border-indigo-500 p-6 rounded-3xl space-y-5 relative flex flex-col justify-between shadow-xl shadow-indigo-100 dark:shadow-none hover:shadow-2xl transition">
+            <span className="absolute top-4 right-4 bg-indigo-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-full uppercase">
+              {isAr ? 'الأكثر طلباً' : 'Best Value'}
+            </span>
+            <div className="space-y-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">{isAr ? 'حزمة النمو' : 'Growth Pack'}</span>
+              <h3 className="text-xl font-display font-bold text-slate-850 dark:text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-indigo-500" />
+                <span>500 {t.credits}</span>
+              </h3>
+              <p className="text-xs text-slate-500">{isAr ? 'مثالي للشركات الناشئة ورواد الأعمال لتصميم هوية كاملة.' : 'Highly recommended for launching complete startup identities.'}</p>
+              <div className="py-1">
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$19</span>
+                <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
+              </div>
+              <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد هويات بصرية كاملة' : 'Complete Brand Kit generation'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'تصدير بصيغة SVG عالية الدقة' : 'High-res SVG exports'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'دعم فني ذو أولوية' : 'Priority server bandwidth'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'رصيد لا ينتهي' : 'Credits never expire'}</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleBuyPack(500, 19)}
+              className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
+            >
+              {isAr ? 'شراء الحزمة الأكثر طلباً' : 'Buy Best Value'}
+            </button>
+          </div>
+
+          {/* Power Pack */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-6 rounded-3xl space-y-5 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="space-y-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? 'الحزمة الفائقة' : 'Power Pack'}</span>
+              <h3 className="text-xl font-display font-bold text-slate-850 dark:text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-indigo-500" />
+                <span>1500 {t.credits}</span>
+              </h3>
+              <p className="text-xs text-slate-500">{isAr ? 'ممتاز للمطورين والمصممين المستقلين الذين يطلقون علامات متعددة.' : 'Perfect for freelancers & builders launching multiple identities.'}</p>
+              <div className="py-1">
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$39</span>
+                <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
+              </div>
+              <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد حتى 750 اسم تجاري' : 'Generate up to 750 names'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد حتى 500 شعار فيكتور' : 'Forge up to 500 logos'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'سرعة فائقة مخصصة' : 'Blazing fast dedicated queue'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'الرصيد صالح للأبد' : 'Credits never expire'}</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleBuyPack(1500, 39)}
+              className="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
+            >
+              {isAr ? 'شراء الحزمة' : 'Buy Pack'}
+            </button>
+          </div>
+
+          {/* Enterprise Pack */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 p-6 rounded-3xl space-y-5 flex flex-col justify-between hover:shadow-lg transition">
+            <div className="space-y-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{isAr ? 'حزمة المؤسسات' : 'Elite Agency Pack'}</span>
+              <h3 className="text-xl font-display font-bold text-slate-850 dark:text-white flex items-center gap-2">
+                <Coins className="w-5 h-5 text-indigo-500" />
+                <span>4000 {t.credits}</span>
+              </h3>
+              <p className="text-xs text-slate-500">{isAr ? 'مخصصة لوكالات التسويق وتصميم العلامات التجارية الكبيرة.' : 'Enterprise-level volume built for agencies & studios.'}</p>
+              <div className="py-1">
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$79</span>
+                <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
+              </div>
+              <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'حجم رصيد هائل للمشاريع' : 'Bulk credits for high volume'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'توليد بلا حدود للعلامات' : 'Unlimited branding suites'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'دعم فني مخصص 24/7' : '24/7 Priority support lines'}</li>
+                <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> {isAr ? 'صلاحية مدى الحياة' : 'Lifetime validity'}</li>
+              </ul>
+            </div>
+            <button 
+              onClick={() => handleBuyPack(4000, 79)}
+              className="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
+            >
+              {isAr ? 'شراء الحزمة' : 'Buy Pack'}
+            </button>
+          </div>
+
+        </div>
+
+        {/* Checkout Modal Overlay */}
+        {checkoutModal && (
+          <CheckoutModal
+            isOpen={checkoutModal.isOpen}
+            onClose={() => setCheckoutModal(null)}
+            onSuccess={checkoutModal.onSuccess}
+            itemName={checkoutModal.itemName}
+            price={checkoutModal.price}
+            language={language}
+            userEmail={userEmail}
+            userDisplayName={userEmail ? userEmail.split('@')[0] : ''}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (page === 'blog') {
+    return (
+      <div className="space-y-12 animate-fade-in py-8">
+        <div className="text-center max-w-2xl mx-auto space-y-4">
+          <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
+            Brand Forge Insights
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Latest trends in logo graphics, design psychology, and startup branding tips.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {blogArticles.map((art) => (
+            <div key={art.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm flex flex-col justify-between">
+              <div>
+                <img src={art.image} alt={art.titleEn} className="w-full h-48 object-cover" referrerPolicy="no-referrer" />
+                <div className="p-6 space-y-3">
+                  <span className="text-[10px] text-slate-400 font-mono font-medium">{art.date} • By {art.author}</span>
+                  <h3 className="font-display font-bold text-slate-900 dark:text-white text-lg">
+                    {language === 'ar' ? art.titleAr : art.titleEn}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {language === 'ar' ? art.excerptAr : art.excerptEn}
+                  </p>
+                </div>
+              </div>
+              <div className="p-6 pt-0 border-t border-slate-50 dark:border-slate-850">
+                <button className="text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center gap-1 hover:underline cursor-pointer">
+                  <span>Read Full Article</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (page === 'faq') {
+    return (
+      <div className="space-y-12 animate-fade-in py-8 max-w-3xl mx-auto">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Everything you need to know about our AI generation credits, SVG logo licensing, and subscription tiers.
+          </p>
+        </div>
+
+        <div className="space-y-4">
+          {[
+            { q: 'How do credits work in BrandForge AI?', a: 'Every generated business name costs 2 credits, slogans cost 1 credit, brand guidelines cost 4 credits, and vector logo generation costs 3 credits. Credits reset monthly based on your subscription.' },
+            { q: 'Do I own the full intellectual property of generated logos?', a: 'Yes! All SVG codes and logo concepts generated belong 100% to you. You can register trademarks and use them commercially without restriction.' },
+            { q: 'Can I download logos with a transparent background?', a: 'Absolutely. The AI Logo Forge lets you download pure XML/SVG vectors as well as rasterized transparent PNGs directly in-browser.' },
+            { q: 'Is there a refund policy for credits purchased?', a: 'Since AI processing costs are consumed immediately, we do not issue refunds for generated assets, but you can cancel your subscription at any time.' }
+          ].map((faq, idx) => (
+            <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl space-y-2 shadow-sm">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-white flex gap-2 items-center">
+                <HelpCircle className="w-4 h-4 text-indigo-500" />
+                <span>{faq.q}</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pl-6">
+                {faq.a}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (page === 'contact') {
+    return (
+      <div className="space-y-12 animate-fade-in py-8 max-w-xl mx-auto">
+        <div className="text-center space-y-4">
+          <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
+            Contact BrandForge Support
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Submit a support ticket and our engineering team will get back to you within 24 hours. Your tickets immediately route to our integrated Admin panel!
+          </p>
+        </div>
+
+        <form onSubmit={handleTicketSubmit} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Your Email</label>
+            <input
+              type="email"
+              required
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="e.g. email@domain.com"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
+            <input
+              type="text"
+              required
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g. Credit adjustment inquiry"
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Message Description</label>
+            <textarea
+              required
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Detailed explanation of your request..."
+              rows={4}
+              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer"
+          >
+            Submit Ticket
+          </button>
+
+          {ticketSuccess && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 rounded-xl text-xs font-medium mt-2">
+              <Check className="w-4 h-4" />
+              <span>Ticket submitted successfully! Check our simulated Admin Dashboard to resolve this ticket.</span>
+            </div>
+          )}
+        </form>
+      </div>
+    );
+  }
+
+  // Terms and Privacy fallback
+  return (
+    <div className="max-w-3xl mx-auto py-12 space-y-6 animate-fade-in text-slate-600 dark:text-slate-350">
+      <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-4">
+        {page === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+      </h2>
+      <p className="text-xs text-slate-400">Last updated: July 8, 2026</p>
+      
+      <div className="space-y-4 text-xs leading-relaxed">
+        <p>
+          Welcome to BrandForge AI. By accessing or using our services, you agree to comply with our commercial licensing, credit consumption constraints, and standard usage rules.
+        </p>
+        <h3 className="font-bold text-sm text-slate-800 dark:text-white pt-2">1. Use of Generation Engines</h3>
+        <p>
+          Generations are processed in real-time. You are permitted commercial utilization of all generated SVG markup codes, marketing slogans, and startup name suggestions. All properties are royalty-free.
+        </p>
+        <h3 className="font-bold text-sm text-slate-800 dark:text-white pt-2">2. Security & Token Protection</h3>
+        <p>
+          Accessing the platform constitutes adherence to anti-scraping controls. Under no circumstance may credentials be shared.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Simple PaletteIcon because we deleted custom SVG policy
+function PaletteIcon(props: any) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.01445 19.1559 5.09238 19.2338 5.15218 19.3271C5.30251 19.5617 5.30251 19.8643 5.15218 20.0989C5.09238 20.1922 5.01445 20.2701 4.85857 20.426C4.42651 20.8581 4.42651 21.5587 4.85857 21.9908C4.94522 22.0774 5.06214 22 5.18434 22H12Z" />
+      <circle cx="7.5" cy="10.5" r="1.5" fill="currentColor" />
+      <circle cx="11.5" cy="7.5" r="1.5" fill="currentColor" />
+      <circle cx="16.5" cy="9.5" r="1.5" fill="currentColor" />
+      <circle cx="15.5" cy="14.5" r="1.5" fill="currentColor" />
+    </svg>
+  );
+}

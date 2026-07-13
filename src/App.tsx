@@ -1,0 +1,1377 @@
+import React, { useState, useEffect } from 'react';
+import { Language, Page, DashboardTab, UserProfile, GeneratedName, GeneratedLogo, GeneratedSlogan, GeneratedBrandKit, UsageLog, SupportTicket } from './types';
+import { translations } from './translations';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import NameGenerator from './components/NameGenerator';
+import LogoGenerator from './components/LogoGenerator';
+import SloganGenerator from './components/SloganGenerator';
+import BrandKitGenerator from './components/BrandKitGenerator';
+import ColorPaletteGenerator from './components/ColorPaletteGenerator';
+import AdminPanel from './components/AdminPanel';
+import BlogFAQPages from './components/BlogFAQPages';
+import DashboardOverview from './components/DashboardOverview';
+import { sendWelcomeEmail } from './lib/emailService';
+import { 
+  Sparkles, ShieldCheck, Coins, Users, Rocket, Target, 
+  MessageSquare, LayoutGrid, Check, Mail, Lock, User, 
+  HelpCircle, ChevronRight, Award, Flame, RefreshCw 
+} from 'lucide-react';
+import {
+  auth,
+  db,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  getDocs,
+  deleteDoc,
+  updateDoc,
+  getClientFirebaseConfig,
+  setClientFirebaseConfig,
+  isClientFirebaseActive,
+  getActiveFirebaseConfig
+} from './lib/firebase';
+
+
+export default function App() {
+  const [language, setLanguage] = useState<Language>('en');
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<Page>('landing');
+  const [activeDashboardTab, setActiveDashboardTab] = useState<DashboardTab>('overview');
+
+  // Firebase configuration state for self-hosting fallback
+  const [showFirebaseSettings, setShowFirebaseSettings] = useState(false);
+  const [customFirebaseInput, setCustomFirebaseInput] = useState(() => {
+    const config = getClientFirebaseConfig();
+    return config ? JSON.stringify(config, null, 2) : '';
+  });
+  const [firebaseSaveStatus, setFirebaseSaveStatus] = useState<'idle' | 'saved' | 'cleared' | 'error'>('idle');
+  const [firebaseErrorMsg, setFirebaseErrorMsg] = useState('');
+
+  // Auth state
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [isRegister, setIsRegister] = useState(false);
+
+  // Core databases (using local state + localStorage fallback)
+  const [usersDb, setUsersDb] = useState<UserProfile[]>([]);
+  const [savedNames, setSavedNames] = useState<GeneratedName[]>([]);
+  const [savedLogos, setSavedLogos] = useState<GeneratedLogo[]>([]);
+  const [savedSlogans, setSavedSlogans] = useState<GeneratedSlogan[]>([]);
+  const [savedKits, setSavedKits] = useState<GeneratedBrandKit[]>([]);
+  const [historyLogs, setHistoryLogs] = useState<UsageLog[]>([]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [welcomeEmails, setWelcomeEmails] = useState<any[]>([]);
+  const [welcomeEmailToast, setWelcomeEmailToast] = useState<{ email: string; name: string } | null>(null);
+
+  const t = translations[language];
+
+  // Check if we are running on the public preview/shared link to hide testing backdoors
+  const isPublicLink = typeof window !== 'undefined' && (
+    window.location.hostname.includes('ais-pre') || 
+    (!window.location.hostname.includes('ais-dev') && 
+     !window.location.hostname.includes('localhost') && 
+     !window.location.hostname.includes('127.0.0.1'))
+  );
+
+  // 1. Initial State Loading from LocalStorage / Firebase sync
+  useEffect(() => {
+    // Sync theme
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  // Firebase Auth & Firestore syncing listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          // Logged in via real Firebase
+          const userDocRef = doc(db, 'users', firebaseUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          let loadedProfile: UserProfile;
+          
+          if (userDocSnap.exists()) {
+            loadedProfile = userDocSnap.data() as UserProfile;
+            
+            // Auto-promote owner email to admin if not already set
+            if (firebaseUser.email === 'yoafyosf121@gmail.com' && loadedProfile.role !== 'admin') {
+              loadedProfile.role = 'admin';
+              await updateDoc(userDocRef, { role: 'admin' });
+            }
+            
+            // Ensure credits is a valid number
+            if (typeof loadedProfile.credits !== 'number' || isNaN(loadedProfile.credits)) {
+              loadedProfile.credits = 10;
+            }
+            
+            // Check for daily free credits
+            const now = new Date();
+            const lastGrant = loadedProfile.lastFreeCreditGrant ? new Date(loadedProfile.lastFreeCreditGrant) : new Date(loadedProfile.createdAt);
+            const msSinceGrant = now.getTime() - lastGrant.getTime();
+            const hoursSinceGrant = msSinceGrant / (1000 * 60 * 60);
+
+            if (hoursSinceGrant >= 24) {
+              loadedProfile.credits += 10;
+              loadedProfile.lastFreeCreditGrant = now.toISOString();
+              await updateDoc(userDocRef, {
+                credits: loadedProfile.credits,
+                lastFreeCreditGrant: loadedProfile.lastFreeCreditGrant
+              });
+            }
+          } else {
+            // If Firestore profile doesn't exist yet, create it
+            loadedProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Brand Architect',
+              credits: 10, // Generous starting credits
+              subscriptionPlan: 'free',
+              billingCycle: 'monthly',
+              role: firebaseUser.email === 'yoafyosf121@gmail.com' ? 'admin' : 'user',
+              createdAt: new Date().toISOString(),
+              lastFreeCreditGrant: new Date().toISOString()
+            };
+            await setDoc(userDocRef, loadedProfile);
+
+            // Dispatch automated welcome email
+            try {
+              await sendWelcomeEmail(firebaseUser.uid, loadedProfile.email, loadedProfile.displayName);
+              setWelcomeEmailToast({ email: loadedProfile.email, name: loadedProfile.displayName });
+              setTimeout(() => setWelcomeEmailToast(null), 6000);
+            } catch (emailErr) {
+              console.error("Welcome email failed during social sign-in:", emailErr);
+            }
+          }
+          
+          setUser(loadedProfile);
+          
+          // Fetch saved assets from user subcollections
+          try {
+            // Load text-based generations
+            const genRef = collection(db, 'users', firebaseUser.uid, 'generations');
+            const genSnap = await getDocs(genRef);
+            
+            const names: GeneratedName[] = [];
+            const slogans: GeneratedSlogan[] = [];
+            const kits: GeneratedBrandKit[] = [];
+            
+            genSnap.forEach((doc) => {
+              const data = doc.data();
+              if (data.type === 'name') {
+                names.push(data.result as GeneratedName);
+              } else if (data.type === 'slogan') {
+                slogans.push(data.result as GeneratedSlogan);
+              } else if (data.type === 'identity') {
+                kits.push(data.result as GeneratedBrandKit);
+              }
+            });
+            
+            setSavedNames(names);
+            setSavedSlogans(slogans);
+            setSavedKits(kits);
+            
+            // Load generated logos
+            const logoRef = collection(db, 'users', firebaseUser.uid, 'logos');
+            const logoSnap = await getDocs(logoRef);
+            const logos: GeneratedLogo[] = [];
+            
+            logoSnap.forEach((doc) => {
+              const data = doc.data();
+              logos.push({
+                id: doc.id,
+                style: data.style || 'Modern',
+                prompt: data.prompt || 'Generated logo',
+                svg: data.imageUrl || '',
+                createdAt: data.createdAt || new Date().toISOString()
+              } as GeneratedLogo);
+            });
+            
+            setSavedLogos(logos);
+            
+          } catch (err) {
+            console.error("Firestore sync error:", err);
+          }
+        } catch (dbErr: any) {
+          console.error("Error loading user profile from Firestore:", dbErr);
+          // Alert user of connection/security rules issues
+          alert("Database connection error: " + (dbErr.message || "Please make sure your Firestore database is created and rules are deployed."));
+        }
+      } else {
+        // Not authenticated with Firebase: load mock assets from localStorage
+        setSavedNames(JSON.parse(localStorage.getItem('brandforge_names') || '[]'));
+        setSavedLogos(JSON.parse(localStorage.getItem('brandforge_logos') || '[]'));
+        setSavedSlogans(JSON.parse(localStorage.getItem('brandforge_slogans') || '[]'));
+        setSavedKits(JSON.parse(localStorage.getItem('brandforge_kits') || '[]'));
+        
+        // Clear user state if the current user is a real Firebase user (not a demo profile)
+        setUser((currentUser) => {
+          if (currentUser && currentUser.uid !== 'user-primary' && currentUser.uid !== 'user-demo-1' && currentUser.uid !== 'user-demo-2') {
+            return null;
+          }
+          return currentUser;
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    // Populate seed accounts for local sandbox purposes
+    const initialUsers: UserProfile[] = [
+      {
+        uid: 'user-primary',
+        email: 'yoafyosf121@gmail.com',
+        displayName: 'Yoaf Yosf',
+        credits: 100,
+        subscriptionPlan: 'pro',
+        billingCycle: 'monthly',
+        role: 'admin',
+        createdAt: new Date().toISOString()
+      },
+      {
+        uid: 'user-demo-1',
+        email: 'founder@greenlife.io',
+        displayName: 'Sarah Green',
+        credits: 45,
+        subscriptionPlan: 'free',
+        billingCycle: 'monthly',
+        role: 'user',
+        createdAt: new Date().toISOString()
+      },
+      {
+        uid: 'user-demo-2',
+        email: 'contact@vertex-agency.co',
+        displayName: 'Vertex Agency',
+        credits: 1550,
+        subscriptionPlan: 'business',
+        billingCycle: 'yearly',
+        role: 'user',
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const cachedUsers = localStorage.getItem('brandforge_users');
+    if (cachedUsers) {
+      setUsersDb(JSON.parse(cachedUsers));
+    } else {
+      setUsersDb(initialUsers);
+      localStorage.setItem('brandforge_users', JSON.stringify(initialUsers));
+    }
+
+    setHistoryLogs(JSON.parse(localStorage.getItem('brandforge_history') || '[]'));
+    
+    // Support tickets seed
+    const cachedTickets = localStorage.getItem('brandforge_tickets');
+    if (cachedTickets) {
+      setSupportTickets(JSON.parse(cachedTickets));
+    } else {
+      const initialTickets: SupportTicket[] = [
+        { id: 'ticket-1', userId: 'user-demo-1', userEmail: 'founder@greenlife.io', subject: 'Inquiry on logo downloads', message: 'I cannot seem to download my transparent logo, could you assist?', status: 'open', createdAt: new Date().toISOString() },
+        { id: 'ticket-2', userId: 'user-demo-2', userEmail: 'contact@vertex-agency.co', subject: 'Invoice needed', message: 'Need yearly billing invoice for company accounting purposes.', status: 'resolved', createdAt: new Date().toISOString() }
+      ];
+      setSupportTickets(initialTickets);
+      localStorage.setItem('brandforge_tickets', JSON.stringify(initialTickets));
+    }
+  }, []);
+
+  // Sync / load welcome emails & real users if user is admin
+  useEffect(() => {
+    if (user && user.role === 'admin' && auth.currentUser) {
+      const fetchWelcomeEmails = async () => {
+        try {
+          const emailsRef = collection(db, 'welcome_emails');
+          const emailsSnap = await getDocs(emailsRef);
+          const loadedEmails: any[] = [];
+          emailsSnap.forEach((doc) => {
+            loadedEmails.push({ id: doc.id, ...doc.data() });
+          });
+          loadedEmails.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
+          setWelcomeEmails(loadedEmails);
+        } catch (err) {
+          console.error("Error loading welcome emails:", err);
+        }
+      };
+
+      const fetchFirestoreUsers = async () => {
+        try {
+          const usersRef = collection(db, 'users');
+          const usersSnap = await getDocs(usersRef);
+          const loadedUsers: UserProfile[] = [];
+          usersSnap.forEach((doc) => {
+            loadedUsers.push(doc.data() as UserProfile);
+          });
+          loadedUsers.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+          setUsersDb(loadedUsers);
+        } catch (err) {
+          console.error("Error loading users from Firestore:", err);
+        }
+      };
+
+      fetchWelcomeEmails();
+      fetchFirestoreUsers();
+    } else {
+      // Seed fallbacks for local sandbox or demo admin views
+      setWelcomeEmails([
+        {
+          id: 'welcome-seed-1',
+          userId: 'user-demo-1',
+          recipientEmail: 'founder@greenlife.io',
+          recipientName: 'Sarah Green',
+          subject: 'Welcome to BrandForge, Sarah Green! 🚀 (+100 AI Credits Loaded)',
+          provider: 'SparkMail SDK (v2.4.1)',
+          status: 'sent',
+          sentAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+          trackingId: 'msg-583021-SEEDWELCOME'
+        },
+        {
+          id: 'welcome-seed-2',
+          userId: 'user-demo-2',
+          recipientEmail: 'contact@vertex-agency.co',
+          recipientName: 'Vertex Agency',
+          subject: 'Welcome to BrandForge, Vertex Agency! 🚀 (+100 AI Credits Loaded)',
+          provider: 'SparkMail SDK (v2.4.1)',
+          status: 'sent',
+          sentAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+          trackingId: 'msg-992015-SEEDWELCOME'
+        }
+      ]);
+
+      const cachedUsers = localStorage.getItem('brandforge_users');
+      if (cachedUsers) {
+        setUsersDb(JSON.parse(cachedUsers));
+      }
+    }
+  }, [user]);
+
+  // 2. Helper State Persistence Syncs
+  const saveUsersToStorage = (updatedUsers: UserProfile[]) => {
+    setUsersDb(updatedUsers);
+    localStorage.setItem('brandforge_users', JSON.stringify(updatedUsers));
+  };
+
+  // Run onboarding tour for new logins removed for React 19 compatibility
+
+  // 3. Simulated & Real Firebase Auth Handlers
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      setShowAuthModal(false);
+    } catch (err: any) {
+      console.error("Google Auth error:", err);
+      alert(err.message || "Google authentication error occurred. Please try again.");
+    }
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authEmail.trim() || !authPassword.trim()) return;
+
+    try {
+      if (isRegister) {
+        // Register utilizing Firebase Auth
+        const cred = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+        const newUser: UserProfile = {
+          uid: cred.user.uid,
+          email: authEmail,
+          displayName: authName || authEmail.split('@')[0],
+          credits: 10, // starting credits
+          subscriptionPlan: 'free',
+          billingCycle: 'monthly',
+          role: authEmail.toLowerCase() === 'yoafyosf121@gmail.com' ? 'admin' : 'user',
+          createdAt: new Date().toISOString(),
+          lastFreeCreditGrant: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'users', cred.user.uid), newUser);
+        setUser(newUser);
+
+        // Dispatch welcome email
+        try {
+          await sendWelcomeEmail(cred.user.uid, authEmail, newUser.displayName);
+          setWelcomeEmailToast({ email: authEmail, name: newUser.displayName });
+          setTimeout(() => setWelcomeEmailToast(null), 6000);
+        } catch (emailErr) {
+          console.error("Welcome email failed during registration:", emailErr);
+        }
+      } else {
+        // Login utilizing Firebase Auth
+        await signInWithEmailAndPassword(auth, authEmail, authPassword);
+      }
+
+      setShowAuthModal(false);
+      setAuthEmail('');
+      setAuthPassword('');
+      setAuthName('');
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      alert(err.message || "Authentication error occurred. Please try again.");
+    }
+  };
+
+  const handleDemoLogin = (role: 'user' | 'admin') => {
+    if (role === 'admin') {
+      setUser(usersDb[0] || {
+        uid: 'user-primary',
+        email: 'yoafyosf121@gmail.com',
+        displayName: 'Yoaf Yosf',
+        credits: 10,
+        subscriptionPlan: 'pro',
+        billingCycle: 'monthly',
+        role: 'admin',
+        createdAt: new Date().toISOString()
+      });
+    } else {
+      setUser(usersDb[1] || {
+        uid: 'user-demo-1',
+        email: 'founder@greenlife.io',
+        displayName: 'Sarah Green',
+        credits: 10,
+        subscriptionPlan: 'free',
+        billingCycle: 'monthly',
+        role: 'user',
+        createdAt: new Date().toISOString()
+      });
+    }
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    setUser(null);
+    setCurrentPage('landing');
+  };
+
+  // 4. State Modification & Credits Hooks
+  const deductCredits = (amount: number): boolean => {
+    if (!user) {
+      console.log("No user loaded; cannot deduct credits.");
+      return false;
+    }
+    const currentCredits = typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
+    if (currentCredits < amount) {
+      console.log(`Insufficient credits. Required: ${amount}, current: ${currentCredits}`);
+      return false;
+    }
+
+    // Deduct from current session user
+    const updatedUser = { ...user, credits: Math.max(0, currentCredits - amount) };
+    setUser(updatedUser);
+    console.log(`Deducting ${amount} credits. New balance: ${updatedUser.credits}`);
+
+    // Sync Firestore if logged in with Firebase
+    if (auth.currentUser) {
+      updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        credits: updatedUser.credits
+      }).then(() => {
+        console.log("Firestore credits updated successfully");
+      }).catch(err => {
+        console.error("Error updating credits in Firestore:", err);
+      });
+    }
+
+    // Sync back with users list DB
+    const updatedDb = usersDb.map(u => u.uid === user.uid ? updatedUser : u);
+    saveUsersToStorage(updatedDb);
+
+    // Log to history
+    const newLog: UsageLog = {
+      id: `log-${Date.now()}`,
+      type: amount === 2 ? 'name' : amount === 3 ? 'logo' : amount === 1 ? 'slogan' : 'brand-kit',
+      prompt: 'AI generation requested',
+      creditsConsumed: amount,
+      createdAt: new Date().toISOString()
+    };
+    const updatedLogs = [newLog, ...historyLogs];
+    setHistoryLogs(updatedLogs);
+    localStorage.setItem('brandforge_history', JSON.stringify(updatedLogs));
+
+    return true;
+  };
+
+  const handleAddCredits = (amount: number) => {
+    if (!user) {
+      console.log("No user loaded; cannot add credits.");
+      return;
+    }
+    const currentCredits = typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
+    const updatedUser = { ...user, credits: currentCredits + amount };
+    setUser(updatedUser);
+    console.log(`Adding ${amount} credits. New balance: ${updatedUser.credits}`);
+
+    if (auth.currentUser) {
+      updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        credits: updatedUser.credits
+      }).then(() => {
+        console.log("Firestore credits added successfully");
+      }).catch(err => {
+        console.error("Error adding credits in Firestore:", err);
+      });
+    }
+
+    const updatedDb = usersDb.map(u => u.uid === user.uid ? updatedUser : u);
+    saveUsersToStorage(updatedDb);
+  };
+
+  const handleUpgradePlan = (plan: 'free' | 'pro' | 'business') => {
+    if (!user) return;
+    const updatedUser = { ...user, subscriptionPlan: plan };
+    setUser(updatedUser);
+
+    if (auth.currentUser) {
+      updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        subscriptionPlan: plan
+      }).catch(err => console.error("Error upgrading plan in Firestore:", err));
+    }
+
+    const updatedDb = usersDb.map(u => u.uid === user.uid ? updatedUser : u);
+    saveUsersToStorage(updatedDb);
+  };
+
+  // 5. Admin Panel adjustment hooks
+  const handleAdminAdjustCredits = (uid: string, credits: number) => {
+    const updatedDb = usersDb.map(u => {
+      if (u.uid === uid) {
+        return { ...u, credits: Math.max(0, u.credits + credits) };
+      }
+      return u;
+    });
+    saveUsersToStorage(updatedDb);
+
+    const found = updatedDb.find(u => u.uid === uid) || null;
+
+    // If the adjusted user is the current logged-in user, sync state
+    if (user && user.uid === uid && found) {
+      setUser(found);
+    }
+
+    // Sync to Firestore for ANY real user (not starting with 'user-')
+    if (found && !uid.startsWith('user-')) {
+      updateDoc(doc(db, 'users', uid), {
+        credits: found.credits
+      }).then(() => {
+        console.log(`Firestore credits successfully updated for user ${uid}`);
+      }).catch(err => {
+        console.error("Admin error updating credits in Firestore:", err);
+      });
+    }
+  };
+
+  const handleAdminAdjustPlan = (uid: string, plan: 'free' | 'pro' | 'business') => {
+    const updatedDb = usersDb.map(u => {
+      if (u.uid === uid) {
+        return { ...u, subscriptionPlan: plan };
+      }
+      return u;
+    });
+    saveUsersToStorage(updatedDb);
+
+    const found = updatedDb.find(u => u.uid === uid) || null;
+
+    if (user && user.uid === uid && found) {
+      setUser(found);
+    }
+
+    if (found && !uid.startsWith('user-')) {
+      updateDoc(doc(db, 'users', uid), {
+        subscriptionPlan: found.subscriptionPlan
+      }).then(() => {
+        console.log(`Firestore subscription plan successfully updated for user ${uid}`);
+      }).catch(err => {
+        console.error("Admin error updating plan in Firestore:", err);
+      });
+    }
+  };
+
+  const handleResolveTicket = (id: string) => {
+    const updated = supportTickets.map(t => t.id === id ? { ...t, status: 'resolved' as const } : t);
+    setSupportTickets(updated);
+    localStorage.setItem('brandforge_tickets', JSON.stringify(updated));
+  };
+
+  const handleNewSupportTicket = (ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => {
+    const newTicket: SupportTicket = {
+      ...ticketData,
+      id: `ticket-${Date.now()}`,
+      status: 'open',
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newTicket, ...supportTickets];
+    setSupportTickets(updated);
+    localStorage.setItem('brandforge_tickets', JSON.stringify(updated));
+  };
+
+  // 6. Asset Saving Hooks
+  const handleSaveName = async (name: GeneratedName) => {
+    // Check duplication
+    if (savedNames.some(item => item.name === name.name)) {
+      // Remove
+      const filtered = savedNames.filter(item => item.name !== name.name);
+      setSavedNames(filtered);
+      localStorage.setItem('brandforge_names', JSON.stringify(filtered));
+
+      if (auth.currentUser) {
+        try {
+          await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'generations', name.name));
+        } catch (err) {
+          console.error("Firestore error deleting name:", err);
+        }
+      }
+      return;
+    }
+
+    const updated = [name, ...savedNames];
+    setSavedNames(updated);
+    localStorage.setItem('brandforge_names', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', name.name), {
+          userId: auth.currentUser.uid,
+          type: 'name',
+          prompt: name.style || 'Generated name',
+          result: name,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error saving name:", err);
+      }
+    }
+  };
+
+  const handleSaveLogo = async (logo: GeneratedLogo) => {
+    const updated = [logo, ...savedLogos];
+    setSavedLogos(updated);
+    localStorage.setItem('brandforge_logos', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'logos', logo.id), {
+          userId: auth.currentUser.uid,
+          prompt: logo.prompt || 'Generated logo',
+          style: logo.style || 'Modern',
+          imageUrl: logo.svg,
+          createdAt: logo.createdAt || new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error saving logo:", err);
+      }
+    }
+  };
+
+  const handleSaveSlogan = async (slogan: GeneratedSlogan) => {
+    if (savedSlogans.some(item => item.slogan === slogan.slogan)) return;
+    const updated = [slogan, ...savedSlogans];
+    setSavedSlogans(updated);
+    localStorage.setItem('brandforge_slogans', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        const sloganKey = encodeURIComponent(slogan.slogan).substring(0, 100);
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', sloganKey), {
+          userId: auth.currentUser.uid,
+          type: 'slogan',
+          prompt: slogan.vibe || 'Generated slogan',
+          result: slogan,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error saving slogan:", err);
+      }
+    }
+  };
+
+  const handleSaveBrandKit = async (kit: GeneratedBrandKit) => {
+    const updated = [kit, ...savedKits];
+    setSavedKits(updated);
+    localStorage.setItem('brandforge_kits', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', kit.id), {
+          userId: auth.currentUser.uid,
+          type: 'identity',
+          prompt: kit.name || 'Generated brand kit',
+          result: kit,
+          createdAt: kit.createdAt || new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error saving brand kit:", err);
+      }
+    }
+  };
+
+  // Asset Deletion Handles
+  const handleRemoveName = async (nameStr: string) => {
+    const filtered = savedNames.filter(item => item.name !== nameStr);
+    setSavedNames(filtered);
+    localStorage.setItem('brandforge_names', JSON.stringify(filtered));
+
+    if (auth.currentUser) {
+      try {
+        await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'generations', nameStr));
+      } catch (err) {
+        console.error("Firestore error removing name:", err);
+      }
+    }
+  };
+
+  const handleUpdateName = async (updatedName: GeneratedName) => {
+    const updated = savedNames.map(item => item.name === updatedName.name ? updatedName : item);
+    setSavedNames(updated);
+    localStorage.setItem('brandforge_names', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', updatedName.name), {
+          userId: auth.currentUser.uid,
+          type: 'name',
+          prompt: updatedName.style || 'Generated name',
+          result: updatedName,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error updating name:", err);
+      }
+    }
+  };
+
+  const handleRemoveLogo = async (id: string) => {
+    const filtered = savedLogos.filter(item => item.id !== id);
+    setSavedLogos(filtered);
+    localStorage.setItem('brandforge_logos', JSON.stringify(filtered));
+
+    if (auth.currentUser) {
+      try {
+        await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'logos', id));
+      } catch (err) {
+        console.error("Firestore error removing logo:", err);
+      }
+    }
+  };
+
+  const handleUpdateLogo = async (updatedLogo: GeneratedLogo) => {
+    const updated = savedLogos.map(item => item.id === updatedLogo.id ? updatedLogo : item);
+    setSavedLogos(updated);
+    localStorage.setItem('brandforge_logos', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'logos', updatedLogo.id), {
+          userId: auth.currentUser.uid,
+          prompt: updatedLogo.prompt || 'Generated logo',
+          style: updatedLogo.style || 'Modern',
+          imageUrl: updatedLogo.svg,
+          createdAt: updatedLogo.createdAt || new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error updating logo:", err);
+      }
+    }
+  };
+
+  const handleRemoveSlogan = async (text: string) => {
+    const filtered = savedSlogans.filter(item => item.slogan !== text);
+    setSavedSlogans(filtered);
+    localStorage.setItem('brandforge_slogans', JSON.stringify(filtered));
+
+    if (auth.currentUser) {
+      try {
+        const sloganKey = encodeURIComponent(text).substring(0, 100);
+        await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'generations', sloganKey));
+      } catch (err) {
+        console.error("Firestore error removing slogan:", err);
+      }
+    }
+  };
+
+  const handleUpdateSlogan = async (updatedSlogan: GeneratedSlogan) => {
+    const updated = savedSlogans.map(item => item.slogan === updatedSlogan.slogan ? updatedSlogan : item);
+    setSavedSlogans(updated);
+    localStorage.setItem('brandforge_slogans', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        const sloganKey = encodeURIComponent(updatedSlogan.slogan).substring(0, 100);
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', sloganKey), {
+          userId: auth.currentUser.uid,
+          type: 'slogan',
+          prompt: updatedSlogan.vibe || 'Generated slogan',
+          result: updatedSlogan,
+          createdAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error updating slogan:", err);
+      }
+    }
+  };
+
+  const handleRemoveKit = async (id: string) => {
+    const filtered = savedKits.filter(item => item.id !== id);
+    setSavedKits(filtered);
+    localStorage.setItem('brandforge_kits', JSON.stringify(filtered));
+
+    if (auth.currentUser) {
+      try {
+        await deleteDoc(doc(db, 'users', auth.currentUser.uid, 'generations', id));
+      } catch (err) {
+        console.error("Firestore error removing brand kit:", err);
+      }
+    }
+  };
+
+  const handleUpdateKit = async (updatedKit: GeneratedBrandKit) => {
+    const updated = savedKits.map(item => item.id === updatedKit.id ? updatedKit : item);
+    setSavedKits(updated);
+    localStorage.setItem('brandforge_kits', JSON.stringify(updated));
+
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'users', auth.currentUser.uid, 'generations', updatedKit.id), {
+          userId: auth.currentUser.uid,
+          type: 'identity',
+          prompt: updatedKit.name || 'Generated brand kit',
+          result: updatedKit,
+          createdAt: updatedKit.createdAt || new Date().toISOString()
+        });
+      } catch (err) {
+        console.error("Firestore error updating brand kit:", err);
+      }
+    }
+  };
+
+  return (
+    <div 
+      className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-indigo-50/70 via-white to-slate-50 dark:from-indigo-950/20 dark:via-slate-950 dark:to-slate-950 transition-colors duration-200" 
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+    >
+      
+      {/* Header */}
+      <Header
+        language={language}
+        setLanguage={setLanguage}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        user={user}
+        onLogout={handleLogout}
+        onLoginClick={() => setShowAuthModal(true)}
+      />
+
+      {/* Main Layout Area */}
+      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        
+        {/* LANDING PAGE */}
+        {currentPage === 'landing' && (
+          <div className="space-y-20 animate-fade-in py-8">
+            
+            {/* Hero Section */}
+            <div className="text-center max-w-4xl mx-auto space-y-6 pt-6">
+              
+              <h1 id="hero-tagline" className="text-4xl sm:text-6xl font-display font-bold tracking-tight text-slate-900 dark:text-white leading-none">
+                {t.tagline}
+              </h1>
+
+              <p id="hero-description" className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                {t.description}
+              </p>
+
+              <div className="flex flex-wrap justify-center gap-4 pt-4">
+                <button
+                  onClick={() => {
+                    if (user) {
+                      setCurrentPage('dashboard');
+                      setActiveDashboardTab('overview');
+                    } else {
+                      setShowAuthModal(true);
+                    }
+                  }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm px-8 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all cursor-pointer"
+                >
+                  {t.getStarted}
+                </button>
+                <button
+                  onClick={() => setCurrentPage('features')}
+                  className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 dark:border-slate-800 dark:text-white font-semibold text-sm px-8 py-3.5 rounded-2xl transition-all cursor-pointer"
+                >
+                  {t.exploreFeatures}
+                </button>
+              </div>
+
+              {/* Stats lists */}
+              <div className="grid grid-cols-3 gap-4 pt-12 max-w-3xl mx-auto text-center">
+                <div className="space-y-1">
+                  <span className="block text-2xl font-extrabold text-slate-950 dark:text-white font-display">100k+</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">{t.statBrands}</span>
+                </div>
+                <div className="space-y-1 border-x border-slate-200 dark:border-slate-800">
+                  <span className="block text-2xl font-extrabold text-slate-950 dark:text-white font-display">4.9/5</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">{t.statRating}</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="block text-2xl font-extrabold text-slate-950 dark:text-white font-display">Instant</span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">{t.statSpeed}</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Quick Generator Tabs Section */}
+            <div className="space-y-8 max-w-5xl mx-auto">
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-display font-bold text-slate-900 dark:text-white">
+                  Forge Instantly Online
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
+                  Select a tool below to access our custom model orchestrator.
+                </p>
+              </div>
+
+              {/* Tools Switcher Component */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/30 dark:shadow-none space-y-8">
+                
+                <div id="tour-name-generator">
+                  <NameGenerator
+                    language={language}
+                    user={user}
+                    onDeductCredits={deductCredits}
+                    onSaveName={handleSaveName}
+                    savedNames={savedNames}
+                    onOpenLogin={() => setShowAuthModal(true)}
+                  />
+                </div>
+
+                <div id="tour-logo-generator" className="border-t border-slate-100 dark:border-slate-800 pt-8">
+                  <LogoGenerator
+                    language={language}
+                    user={user}
+                    onDeductCredits={deductCredits}
+                    onSaveLogo={handleSaveLogo}
+                    savedLogos={savedLogos}
+                    onOpenLogin={() => setShowAuthModal(true)}
+                  />
+                </div>
+
+                <div id="tour-slogan-generator" className="border-t border-slate-100 dark:border-slate-800 pt-8">
+                  <SloganGenerator
+                    language={language}
+                    user={user}
+                    onDeductCredits={deductCredits}
+                    onSaveSlogan={handleSaveSlogan}
+                    savedSlogans={savedSlogans}
+                    onOpenLogin={() => setShowAuthModal(true)}
+                  />
+                </div>
+
+                <div id="tour-brandkit-generator" className="border-t border-slate-100 dark:border-slate-800 pt-8">
+                  <BrandKitGenerator
+                    language={language}
+                    user={user}
+                    onDeductCredits={deductCredits}
+                    onSaveBrandKit={handleSaveBrandKit}
+                    savedKits={savedKits}
+                    onOpenLogin={() => setShowAuthModal(true)}
+                  />
+                </div>
+
+                <div id="interactive-color-palette" className="border-t border-slate-100 dark:border-slate-800 pt-8">
+                  <ColorPaletteGenerator
+                    language={language}
+                    user={user}
+                    onDeductCredits={deductCredits}
+                    onSaveBrandKit={handleSaveBrandKit}
+                    onOpenLogin={() => setShowAuthModal(true)}
+                  />
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* DASHBOARD WORKSPACE */}
+        {currentPage === 'dashboard' && user && (
+          <DashboardOverview
+            language={language}
+            user={user}
+            activeTab={activeDashboardTab}
+            setActiveTab={setActiveDashboardTab}
+            savedNames={savedNames}
+            onRemoveName={handleRemoveName}
+            onUpdateName={handleUpdateName}
+            savedLogos={savedLogos}
+            onRemoveLogo={handleRemoveLogo}
+            onUpdateLogo={handleUpdateLogo}
+            savedSlogans={savedSlogans}
+            onRemoveSlogan={handleRemoveSlogan}
+            onUpdateSlogan={handleUpdateSlogan}
+            savedKits={savedKits}
+            onRemoveKit={handleRemoveKit}
+            onUpdateKit={handleUpdateKit}
+            historyLogs={historyLogs}
+            onAddCredits={handleAddCredits}
+            onUpgradePlan={handleUpgradePlan}
+            onDeductCredits={deductCredits}
+            onSaveBrandKit={handleSaveBrandKit}
+          />
+        )}
+
+        {/* ADMIN WORKSPACE PANEL */}
+        {currentPage === 'admin' && user?.role === 'admin' && (
+          <AdminPanel
+            language={language}
+            users={usersDb}
+            onAdjustCredits={handleAdminAdjustCredits}
+            onAdjustPlan={handleAdminAdjustPlan}
+            systemLogs={historyLogs}
+            supportTickets={supportTickets}
+            onResolveTicket={handleResolveTicket}
+            welcomeEmails={welcomeEmails}
+          />
+        )}
+
+        {/* STATIC & INFORMATIONAL PAGES (Features, Blog, FAQ, Contact, Terms, Privacy) */}
+        {['features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy'].includes(currentPage) && (
+          <BlogFAQPages
+            language={language}
+            page={currentPage}
+            setCurrentPage={setCurrentPage}
+            onSubmitTicket={handleNewSupportTicket}
+            userEmail={user?.email}
+            userUid={user?.uid}
+            onAddCredits={handleAddCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
+          />
+        )}
+
+      </main>
+
+      {/* Footer */}
+      <Footer language={language} setCurrentPage={setCurrentPage} />
+
+      {/* AUTH MODAL DIALOG */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl relative space-y-6 max-h-[90vh] overflow-y-auto">
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-display font-bold text-xl text-slate-900 dark:text-white">
+                {isRegister ? t.register : t.login}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Unlock instant AI brand name, logo, & guide forge engines
+              </p>
+            </div>
+
+            {/* Quick Demo logins for testing ease */}
+            {!isPublicLink && (
+              <div className="space-y-2 pb-4 border-b border-slate-100 dark:border-slate-850">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Testing Profiles</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleDemoLogin('admin')}
+                    className="py-2 text-center bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 rounded-xl text-xs font-semibold cursor-pointer border border-rose-100 dark:border-rose-900"
+                  >
+                    Yoaf (Admin & Credits)
+                  </button>
+                  <button
+                    onClick={() => handleDemoLogin('user')}
+                    className="py-2 text-center bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 rounded-xl text-xs font-semibold cursor-pointer border border-indigo-100 dark:border-indigo-900"
+                  >
+                    Sarah (Demo User)
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Real Google Sign-In Button */}
+            <button
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-750 dark:text-white border border-slate-200 dark:border-slate-700 font-semibold py-3 rounded-xl text-xs transition cursor-pointer shadow-sm"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.54 14.98 1 12 1 7.35 1 3.37 3.67 1.39 7.56l3.79 2.94C6.1 7.37 8.84 5.04 12 5.04z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.43c-.28 1.44-1.09 2.66-2.31 3.48l3.6 2.79c2.1-1.94 3.31-4.79 3.31-8.42z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.18 14.5c-.24-.72-.38-1.49-.38-2.3s.14-1.58.38-2.3L1.39 6.96C.5 8.74 0 10.74 0 12.83s.5 4.09 1.39 5.87l3.79-2.94C4.8 14.26 4.8 13.74 5.18 14.5z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c3.24 0 5.97-1.08 7.96-2.93l-3.6-2.79c-1.1.74-2.51 1.18-4.36 1.18-3.16 0-5.9-2.33-6.82-5.46L1.39 15.94C3.37 19.83 7.35 23 12 23z"
+                />
+              </svg>
+              <span>{language === 'ar' ? 'تسجيل الدخول باستخدام Google' : 'Sign in with Google'}</span>
+            </button>
+
+            <div className="flex items-center my-4">
+              <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
+              <span className="px-3 text-[10px] text-slate-400 uppercase font-semibold tracking-widest">
+                {language === 'ar' ? 'أو عبر البريد الإلكتروني' : 'or via Email'}
+              </span>
+              <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
+              {isRegister && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t.name}</label>
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    placeholder="Jane Doe"
+                    className="w-full px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t.email}</label>
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="yoafyosf121@gmail.com"
+                  className="w-full px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t.password}</label>
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer"
+              >
+                {isRegister ? t.register : t.login}
+              </button>
+            </form>
+
+            <div className="text-center">
+              <button
+                onClick={() => setIsRegister(!isRegister)}
+                className="text-xs font-medium text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer"
+              >
+                {isRegister ? 'Already have an account? Log In' : 'Need an account? Sign Up'}
+              </button>
+            </div>
+
+            {/* Custom Firebase Setup Panel for Self-Hosting (Hostinger/GitHub) */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowFirebaseSettings(!showFirebaseSettings)}
+                className="w-full flex items-center justify-between text-xs font-semibold text-slate-500 hover:text-indigo-600 transition"
+              >
+                <span>
+                  {language === 'ar' 
+                    ? '⚙️ إعدادات قاعدة بيانات Firebase المخصصة' 
+                    : '⚙️ Custom Firebase Project Settings'}
+                </span>
+                <span>{showFirebaseSettings ? '▲' : '▼'}</span>
+              </button>
+
+              {showFirebaseSettings && (
+                <div className="mt-3 space-y-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-left animate-fade-in">
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    {language === 'ar'
+                      ? 'إذا قمت برفع التطبيق على Hostinger أو GitHub وتريد ربطه بقاعدة بيانات Firebase الخاصة بك، قم بلصق كائن تهيئة الويب الخاص بـ Firebase (Web Configuration SDK Object) أدناه:'
+                      : 'If you self-host this app on Hostinger or GitHub, paste your Firebase SDK Configuration JSON here to sync your custom database:'}
+                  </p>
+
+                  <textarea
+                    rows={6}
+                    value={customFirebaseInput}
+                    onChange={(e) => {
+                      setCustomFirebaseInput(e.target.value);
+                      setFirebaseSaveStatus('idle');
+                    }}
+                    placeholder={`{
+  "apiKey": "AIzaSy...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}`}
+                    className="w-full p-3 font-mono text-[11px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100"
+                  />
+
+                  {firebaseSaveStatus === 'saved' && (
+                    <div className="p-2 text-[11px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg">
+                      {language === 'ar'
+                        ? '✓ تم حفظ الإعدادات! سيتم إعادة تحميل الصفحة لتطبيق التغييرات...'
+                        : '✓ Settings saved! Reloading to apply changes...'}
+                    </div>
+                  )}
+
+                  {firebaseSaveStatus === 'cleared' && (
+                    <div className="p-2 text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 rounded-lg">
+                      {language === 'ar'
+                        ? '✓ تم حذف الإعدادات المخصصة والرجوع للافتراضي. سيتم إعادة تحميل الصفحة...'
+                        : '✓ Custom configuration cleared. Reloading to apply defaults...'}
+                    </div>
+                  )}
+
+                  {firebaseSaveStatus === 'error' && (
+                    <div className="p-2 text-[11px] bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 rounded-lg">
+                      {firebaseErrorMsg}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          // Try parsing as JSON
+                          let parsed;
+                          try {
+                            parsed = JSON.parse(customFirebaseInput);
+                          } catch (jsonErr) {
+                            // If direct parse fails, try extracting JSON from JS object format
+                            const cleaned = customFirebaseInput
+                              .replace(/([a-zA-Z0-9]+)\s*:/g, '"$1":') // add quotes to unquoted keys
+                              .replace(/'/g, '"') // replace single quotes with double quotes
+                              .replace(/,\s*}/g, '}') // clean trailing commas
+                              .replace(/const\s+firebaseConfig\s*=\s*/g, '')
+                              .replace(/;/g, '');
+                            parsed = JSON.parse(cleaned);
+                          }
+
+                          if (!parsed.apiKey || !parsed.projectId) {
+                            throw new Error(language === 'ar' ? 'تنسيق غير صالح. يرجى إدخال apiKey و projectId على الأقل.' : 'Invalid format. Must include at least apiKey and projectId.');
+                          }
+
+                          setClientFirebaseConfig(parsed);
+                          setFirebaseSaveStatus('saved');
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1500);
+                        } catch (err: any) {
+                          setFirebaseSaveStatus('error');
+                          setFirebaseErrorMsg(language === 'ar' 
+                            ? 'خطأ في التنسيق: تأكد من كتابة كود JSON صحيح يحتوي على الأقل على apiKey و projectId.'
+                            : `Format error: ${err.message || 'Make sure it is a valid JSON object.'}`);
+                        }
+                      }}
+                      className="flex-1 py-2 text-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-bold cursor-pointer transition"
+                    >
+                      {language === 'ar' ? 'حفظ وإعادة تشغيل' : 'Save & Reload'}
+                    </button>
+
+                    {isClientFirebaseActive() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClientFirebaseConfig(null);
+                          setFirebaseSaveStatus('cleared');
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1500);
+                        }}
+                        className="py-2 px-3 text-center bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-[11px] font-bold cursor-pointer transition"
+                      >
+                        {language === 'ar' ? 'حذف الإعدادات' : 'Clear Config'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 space-y-1 leading-relaxed">
+                    <span className="font-semibold block text-slate-500">
+                      {language === 'ar' ? 'خطوات هامة في لوحة تحكم Firebase:' : 'Important steps in Firebase Console:'}
+                    </span>
+                    <ol className="list-decimal list-inside space-y-0.5">
+                      {language === 'ar' ? (
+                        <>
+                          <li>تفعيل <b>Email/Password</b> في تبويب Authentication.</li>
+                          <li>إضافة نطاق موقعك (مثل Hostinger أو github.io) إلى <b>Authorized Domains</b> في إعدادات Authentication.</li>
+                          <li>تفعيل <b>Cloud Firestore</b> في وضع الإنتاج أو التجربة.</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>Enable <b>Email/Password</b> sign-in provider under Authentication.</li>
+                          <li>Add your domain (e.g. github.io or your domain) to <b>Authorized Domains</b> under Authentication Settings.</li>
+                          <li>Create a <b>Cloud Firestore</b> database.</li>
+                        </>
+                      )}
+                    </ol>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Automated welcome email success toast notification */}
+      {welcomeEmailToast && (
+        <div className="fixed bottom-6 right-6 z-[120] bg-white dark:bg-slate-900 border border-emerald-100 dark:border-emerald-950/40 shadow-2xl p-4 rounded-2xl flex items-center gap-4 max-w-sm animate-bounce">
+          <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 flex items-center justify-center relative shrink-0">
+            <Mail className="w-5 h-5" />
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-600 rounded-full flex items-center justify-center text-[8px] text-white font-bold">1</span>
+          </div>
+          <div className="flex-grow min-w-0 text-left">
+            <h4 className="font-bold text-slate-800 dark:text-white text-xs">
+              Welcome Email Dispatched!
+            </h4>
+            <p className="text-[10px] text-slate-400 truncate">
+              Sent to <span className="font-semibold text-slate-600 dark:text-slate-300">{welcomeEmailToast.email}</span> via SparkMail SDK.
+            </p>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
