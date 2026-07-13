@@ -258,7 +258,7 @@ export default function App() {
       },
       {
         uid: 'user-demo-2',
-        email: 'contact@vertex-agency.co',
+        email: 'brandforge-ai@zohomail.com',
         displayName: 'Vertex Agency',
         credits: 1550,
         subscriptionPlan: 'business',
@@ -285,7 +285,8 @@ export default function App() {
     } else {
       const initialTickets: SupportTicket[] = [
         { id: 'ticket-1', userId: 'user-demo-1', userEmail: 'founder@greenlife.io', subject: 'Inquiry on logo downloads', message: 'I cannot seem to download my transparent logo, could you assist?', status: 'open', createdAt: new Date().toISOString() },
-        { id: 'ticket-2', userId: 'user-demo-2', userEmail: 'contact@vertex-agency.co', subject: 'Invoice needed', message: 'Need yearly billing invoice for company accounting purposes.', status: 'resolved', createdAt: new Date().toISOString() }
+        { id: 'ticket-2', userId: 'user-demo-2', userEmail: 'brandforge-ai@zohomail.com', subject: 'Invoice needed', message: 'Need yearly billing invoice for company accounting purposes.', status: 'resolved', createdAt: new Date().toISOString() },
+        { id: 'ticket-3', userId: 'user-demo-3', userEmail: 'brandforge-ai@zohomail.com', subject: 'Test Message', message: 'This is a random test message to verify the contact functionality is working correctly with the new email.', status: 'open', createdAt: new Date().toISOString() }
       ];
       setSupportTickets(initialTickets);
       localStorage.setItem('brandforge_tickets', JSON.stringify(initialTickets));
@@ -344,7 +345,7 @@ export default function App() {
         {
           id: 'welcome-seed-2',
           userId: 'user-demo-2',
-          recipientEmail: 'contact@vertex-agency.co',
+          recipientEmail: 'brandforge-ai@zohomail.com',
           recipientName: 'Vertex Agency',
           subject: 'Welcome to BrandForge, Vertex Agency! 🚀 (+100 AI Credits Loaded)',
           provider: 'SparkMail SDK (v2.4.1)',

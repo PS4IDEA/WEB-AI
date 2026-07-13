@@ -89,7 +89,28 @@ export async function sendWelcomeEmail(
     // 1. Real persistence: write to the shared Firestore database
     await addDoc(collection(db, 'welcome_emails'), emailLog);
 
-    // 2. Development console feedback
+    // 2. Try to send via our backend API (nodemailer)
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: email,
+          subject,
+          html: bodyHtml
+        })
+      });
+      const data = await response.json();
+      if (!data.success) {
+        console.warn("Backend email API reported failure:", data.error);
+      } else {
+        console.log("Backend email API success:", data.message || data.messageId);
+      }
+    } catch (apiErr) {
+       console.error("Failed to reach backend email API:", apiErr);
+    }
+
+    // 3. Development console feedback
     console.log(`[SparkMail SDK] Automated Welcome Email sent to ${email} successfully!`, {
       trackingId,
       subject,

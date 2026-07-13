@@ -116,6 +116,46 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
 // API Endpoints
 // ----------------------------------------------------
 
+import nodemailer from 'nodemailer';
+
+app.post("/api/send-email", async (req, res) => {
+  try {
+    const { to, subject, html } = req.body;
+    if (!to || !subject || !html) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    // Configure your real SMTP credentials here or in .env
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        console.warn("SMTP credentials not provided. Simulating email send for dev environment.");
+        return res.json({ success: true, message: "Simulated email send. Provide SMTP_USER and SMTP_PASS in .env to send real emails." });
+    }
+
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"BrandForge AI" <${process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log("Email sent: %s", info.messageId);
+    res.json({ success: true, messageId: info.messageId });
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 1. Business Name & Domain Generator
 app.post("/api/generate-names", async (req, res) => {
   try {
