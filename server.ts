@@ -7,7 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 
 app.use(express.json());
 
@@ -127,22 +127,25 @@ app.post("/api/send-email", async (req, res) => {
 
     // Configure your real SMTP credentials here or in .env
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
+      host: process.env.SMTP_HOST || 'smtp.zoho.com',
+      port: parseInt(process.env.SMTP_PORT || '465', 10),
+      secure: process.env.SMTP_PORT ? process.env.SMTP_PORT === '465' : true, // true for 465, false for other ports
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: process.env.SMTP_USER || 'brandforge-ai@zohomail.com',
+        pass: process.env.SMTP_PASS || 'MkXZGzepdgtf',
       },
     });
 
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    const smtpUser = process.env.SMTP_USER || 'brandforge-ai@zohomail.com';
+    const smtpPass = process.env.SMTP_PASS || 'MkXZGzepdgtf';
+
+    if (!smtpUser || !smtpPass) {
         console.warn("SMTP credentials not provided. Simulating email send for dev environment.");
         return res.json({ success: true, message: "Simulated email send. Provide SMTP_USER and SMTP_PASS in .env to send real emails." });
     }
 
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || `"BrandForge AI" <${process.env.SMTP_USER}>`,
+      from: process.env.SMTP_FROM || `"BrandForge AI" <${smtpUser}>`,
       to,
       subject,
       html,

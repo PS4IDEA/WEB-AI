@@ -11,7 +11,7 @@ import ColorPaletteGenerator from './components/ColorPaletteGenerator';
 import AdminPanel from './components/AdminPanel';
 import BlogFAQPages from './components/BlogFAQPages';
 import DashboardOverview from './components/DashboardOverview';
-import { sendWelcomeEmail } from './lib/emailService';
+import { sendWelcomeEmail, sendTestEmail } from './lib/emailService';
 import { 
   Sparkles, ShieldCheck, Coins, Users, Rocket, Target, 
   MessageSquare, LayoutGrid, Check, Mail, Lock, User, 
@@ -551,6 +551,22 @@ export default function App() {
   };
 
   // 5. Admin Panel adjustment hooks
+  const handleSendTestEmail = async () => {
+    if (!user) return;
+    try {
+      const success = await sendTestEmail(user.email, user.displayName || 'Test User');
+      if (success) {
+        setWelcomeEmailToast({ email: user.email, name: user.displayName || 'Test User' });
+        setTimeout(() => setWelcomeEmailToast(null), 6000);
+      } else {
+        alert("Failed to send test email. Check console.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error sending test email.");
+    }
+  };
+
   const handleAdminAdjustCredits = (uid: string, credits: number) => {
     const updatedDb = usersDb.map(u => {
       if (u.uid === uid) {
@@ -1051,6 +1067,7 @@ export default function App() {
             supportTickets={supportTickets}
             onResolveTicket={handleResolveTicket}
             welcomeEmails={welcomeEmails}
+            onSendTestEmail={handleSendTestEmail}
           />
         )}
 

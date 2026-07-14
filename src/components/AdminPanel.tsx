@@ -16,6 +16,7 @@ interface AdminPanelProps {
   supportTickets: SupportTicket[];
   onResolveTicket: (id: string) => void;
   welcomeEmails?: any[];
+  onSendTestEmail?: () => void;
 }
 
 export default function AdminPanel({
@@ -26,7 +27,8 @@ export default function AdminPanel({
   systemLogs,
   supportTickets,
   onResolveTicket,
-  welcomeEmails = []
+  welcomeEmails = [],
+  onSendTestEmail
 }: AdminPanelProps) {
   const t = translations[language];
 
@@ -327,9 +329,20 @@ export default function AdminPanel({
             <Mail className="w-4 h-4 text-emerald-500" />
             Automated Welcome Emails Outbox (SparkMail Integration)
           </h3>
-          <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
-            Active SDK: v2.4.1
-          </span>
+          <div className="flex items-center gap-3">
+            {onSendTestEmail && (
+              <button 
+                onClick={onSendTestEmail}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <Mail className="w-3 h-3" />
+                Send Test Email
+              </button>
+            )}
+            <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+              Active SDK: v2.4.1
+            </span>
+          </div>
         </div>
 
         {welcomeEmails.length > 0 ? (

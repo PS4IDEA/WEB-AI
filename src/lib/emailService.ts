@@ -127,3 +127,20 @@ export async function sendWelcomeEmail(
     };
   }
 }
+
+export async function sendTestEmail(email: string, displayName: string): Promise<boolean> {
+  const subject = `Test Message from BrandForge, ${displayName}! 🚀`;
+  const bodyHtml = generateWelcomeEmailHtml(displayName, email);
+  try {
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: email, subject, html: bodyHtml })
+    });
+    const data = await response.json();
+    return data.success;
+  } catch (err) {
+    console.error("Test email failed:", err);
+    return false;
+  }
+}
