@@ -54,14 +54,130 @@ function cleanJSON(text: string): string {
   return cleaned;
 }
 
-async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
+function robustParseJSON(text: string): any {
+  let cleaned = text.trim();
+
+  // 1. Strip markdown code block wrappers if they exist
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  const match = codeBlockRegex.exec(cleaned);
+  if (match && match[1]) {
+    cleaned = match[1].trim();
+  } else {
+    // If no markdown block, search for the first '{' or '[' and last '}' or ']'
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+    let startIdx = -1;
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      startIdx = Math.min(firstBrace, firstBracket);
+    } else {
+      startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+    }
+
+    const lastBrace = cleaned.lastIndexOf('}');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const endIdx = Math.max(lastBrace, lastBracket);
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+  }
+
+  // A. Remove trailing commas within arrays or objects.
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+  // B. Try parsing. If it fails, apply advanced sanitization.
+  try {
+    return JSON.parse(cleaned);
+  } catch (initialError) {
+    console.warn("[Backend API] Standard JSON.parse failed. Applying advanced sanitization...");
+    
+    // C. Fix unescaped control characters and unescaped quotes inside string fields.
+    let inString = false;
+    let escapeActive = false;
+    let sanitized = "";
+    
+    for (let i = 0; i < cleaned.length; i++) {
+      const char = cleaned[i];
+      
+      if (char === '\\') {
+        escapeActive = !escapeActive;
+        sanitized += char;
+      } else if (char === '"') {
+        if (escapeActive) {
+          sanitized += char;
+          escapeActive = false;
+        } else {
+          let isBoundary = false;
+          
+          if (inString) {
+            let nextNonWhitespace = "";
+            for (let j = i + 1; j < cleaned.length; j++) {
+              if (!/\s/.test(cleaned[j])) {
+                nextNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (nextNonWhitespace === ',' || nextNonWhitespace === '}' || nextNonWhitespace === ']' || nextNonWhitespace === ':') {
+              isBoundary = true;
+            }
+          } else {
+            let prevNonWhitespace = "";
+            for (let j = i - 1; j >= 0; j--) {
+              if (!/\s/.test(cleaned[j])) {
+                prevNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (prevNonWhitespace === ':' || prevNonWhitespace === ',' || prevNonWhitespace === '{' || prevNonWhitespace === '[') {
+              isBoundary = true;
+            }
+          }
+          
+          if (isBoundary) {
+            inString = !inString;
+            sanitized += char;
+          } else {
+            if (inString) {
+              sanitized += '\\"';
+            } else {
+              inString = true;
+              sanitized += char;
+            }
+          }
+        }
+      } else {
+        escapeActive = false;
+        if (inString) {
+          if (char === '\n') {
+            sanitized += '\\n';
+          } else if (char === '\r') {
+            sanitized += '\\r';
+          } else if (char === '\t') {
+            sanitized += '\\t';
+          } else {
+            sanitized += char;
+          }
+        } else {
+          sanitized += char;
+        }
+      }
+    }
+    
+    try {
+      return JSON.parse(sanitized);
+    } catch (finalError: any) {
+      console.error("[Backend API] Advanced sanitization also failed to parse JSON.", finalError);
+      throw initialError;
+    }
+  }
+}
+
+async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, jsonParser?: (text: string) => any) {
   const modelsToTry = Array.from(new Set([
     params.model,
     "gemini-2.5-flash",
-    "gemini-2.5-flash",
     "gemini-3.1-flash-lite",
-    "gemini-flash-latest",
-    "gemini-2.5-flash"
+    "gemini-flash-latest"
   ].filter(Boolean)));
 
   let lastError: any = null;
@@ -75,8 +191,25 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
           ...params,
           model,
         });
+        
+        const text = response.text;
+        if (!text) {
+          throw new Error("Empty response returned by model.");
+        }
+
+        if (jsonParser) {
+          try {
+            const parsed = jsonParser(text);
+            console.log(`[Backend API] SUCCESS with model ${model} (Valid JSON Parsed)`);
+            return { response, parsed };
+          } catch (parseErr: any) {
+            console.warn(`[Backend API] JSON parsing failed for model ${model} on attempt ${r + 1}: ${parseErr.message}`);
+            throw new Error(`JSON format invalid: ${parseErr.message}`);
+          }
+        }
+
         console.log(`[Backend API] SUCCESS with model ${model}`);
-        return response;
+        return { response, parsed: null };
       } catch (err: any) {
         lastError = err;
         const status = err.status || (err.response && err.response.status) || err.statusCode;
@@ -84,21 +217,19 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
         
         console.warn(`[Backend API] Attempt with model ${model} (attempt ${r + 1}/${maxRetries}) failed: ${message}`);
 
-        // If it is a clear authentication/API key error, abort early since no model will work with an invalid key
         const isAuthError = status === 401 || status === 403 || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
         if (isAuthError) {
           console.error(`[Backend API] Auth Error! Aborting fallback loop.`);
           throw err;
         }
 
-        // If it is a different 400 (like bad request due to invalid parameters other than model), we only abort if it's not a model-not-found error
         const isModelNotFoundError = message.includes("not found") || message.includes("not supported") || message.includes("unsupported") || message.includes("model");
-        if ((status === 400 || message.includes("INVALID_ARGUMENT")) && !isModelNotFoundError) {
+        const isJsonError = message.includes("JSON format invalid");
+        if ((status === 400 || message.includes("INVALID_ARGUMENT")) && !isModelNotFoundError && !isJsonError) {
           console.error(`[Backend API] Bad Request (non-model error). Aborting fallback loop.`);
           throw err;
         }
 
-        // Wait with exponential backoff before retrying the same model
         if (r < maxRetries - 1) {
           const delay = Math.pow(2, r) * 1000;
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -107,7 +238,6 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
     }
   }
 
-  // If we exhausted all options, throw a clear error with details
   console.error("All model attempts failed. Last error:", lastError);
   throw new Error(`All model endpoints are currently experiencing high demand. Details: ${lastError?.message || "Unavailable"}`);
 }
@@ -127,7 +257,7 @@ app.post("/api/send-email", async (req, res) => {
     }
 
     // 1. Try sending via Resend API first
-    const resendApiKey = process.env.RESEND_API_KEY || "re_SVzkgr84_HjvYHW5jGUM2wtevYN8H4MSi";
+    const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
       try {
         console.log("Attempting to send email via Resend API to:", to);
@@ -221,8 +351,8 @@ app.post("/api/send-email", async (req, res) => {
 
     // 2. Fallback: SMTP / Nodemailer
     console.log("Attempting fallback to SMTP...");
-    const smtpUser = process.env.SMTP_USER || 'brandforge-ai@zohomail.com';
-    const smtpPass = process.env.SMTP_PASS || 'MkXZGzepdgtf';
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
 
     if (!smtpUser || !smtpPass) {
         if ((req as any).resendSandboxError) {
@@ -326,23 +456,15 @@ You MUST respond with a JSON array of objects strictly matching this structure:
 ]
 Do not include any markdown markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "[]";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: result.parsed });
   } catch (error: any) {
     console.error("Error generating names:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to generate brand names" });
@@ -387,23 +509,15 @@ Return a JSON object matching this structure:
 }
 Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "{}";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: result.parsed });
   } catch (error: any) {
     console.error("Error generating logo:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to generate logo" });
@@ -430,23 +544,15 @@ Return a JSON array of objects strictly matching this structure:
 ]
 Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "[]";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: result.parsed });
   } catch (error: any) {
     console.error("Error generating slogans:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to generate slogans" });
@@ -485,23 +591,15 @@ Generate and return a JSON object matching this structure:
 }
 Do not include markdown markers. Return pure JSON.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "{}";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: result.parsed });
   } catch (error: any) {
     console.error("Error generating brand kit:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to generate brand kit" });
@@ -560,23 +658,15 @@ You MUST respond with a JSON object strictly matching this structure:
 }
 Do not include any markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "{}";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, data });
+    res.json({ success: true, data: result.parsed });
   } catch (error: any) {
     console.error("Error generating color palette:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to generate color palette" });
@@ -610,23 +700,15 @@ Example Output:
 ]
 Do not include markdown markers. Return pure JSON.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "[]";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, tags: data });
+    res.json({ success: true, tags: result.parsed });
   } catch (error: any) {
     console.error("Error auto-tagging:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to auto-tag" });
@@ -668,23 +750,15 @@ Respond with a JSON object strictly matching this structure:
 }
 Do not include markdown tags. Return pure JSON.`;
 
-    const response = await generateContentWithRetry(ai, {
+    const result = await generateContentWithRetry(ai, {
       model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
       },
-    });
+    }, 2, robustParseJSON);
 
-    const text = response.text || "{}";
-    let data;
-    try {
-      data = JSON.parse(cleanJSON(text));
-    } catch (e) {
-      console.error("JSON Parse Error. Raw text:", text.substring(0, 500) + "...");
-      throw new Error("Invalid JSON generated by AI.");
-    }
-    res.json({ success: true, comparison: data });
+    res.json({ success: true, comparison: result.parsed });
   } catch (error: any) {
     console.error("Error comparing assets:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to compare assets" });

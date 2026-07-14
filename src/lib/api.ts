@@ -26,6 +26,124 @@ function cleanJSON(text: string): string {
   return cleaned;
 }
 
+function robustParseJSON(text: string): any {
+  let cleaned = text.trim();
+
+  // 1. Strip markdown code block wrappers if they exist
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  const match = codeBlockRegex.exec(cleaned);
+  if (match && match[1]) {
+    cleaned = match[1].trim();
+  } else {
+    // If no markdown block, search for the first '{' or '[' and last '}' or ']'
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+    let startIdx = -1;
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      startIdx = Math.min(firstBrace, firstBracket);
+    } else {
+      startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+    }
+
+    const lastBrace = cleaned.lastIndexOf('}');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const endIdx = Math.max(lastBrace, lastBracket);
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+  }
+
+  // A. Remove trailing commas within arrays or objects.
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+  // B. Try parsing. If it fails, apply advanced sanitization.
+  try {
+    return JSON.parse(cleaned);
+  } catch (initialError) {
+    console.warn("[Client API] Standard JSON.parse failed. Applying advanced sanitization...");
+    
+    // C. Fix unescaped control characters and unescaped quotes inside string fields.
+    let inString = false;
+    let escapeActive = false;
+    let sanitized = "";
+    
+    for (let i = 0; i < cleaned.length; i++) {
+      const char = cleaned[i];
+      
+      if (char === '\\') {
+        escapeActive = !escapeActive;
+        sanitized += char;
+      } else if (char === '"') {
+        if (escapeActive) {
+          sanitized += char;
+          escapeActive = false;
+        } else {
+          let isBoundary = false;
+          
+          if (inString) {
+            let nextNonWhitespace = "";
+            for (let j = i + 1; j < cleaned.length; j++) {
+              if (!/\s/.test(cleaned[j])) {
+                nextNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (nextNonWhitespace === ',' || nextNonWhitespace === '}' || nextNonWhitespace === ']' || nextNonWhitespace === ':') {
+              isBoundary = true;
+            }
+          } else {
+            let prevNonWhitespace = "";
+            for (let j = i - 1; j >= 0; j--) {
+              if (!/\s/.test(cleaned[j])) {
+                prevNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (prevNonWhitespace === ':' || prevNonWhitespace === ',' || prevNonWhitespace === '{' || prevNonWhitespace === '[') {
+              isBoundary = true;
+            }
+          }
+          
+          if (isBoundary) {
+            inString = !inString;
+            sanitized += char;
+          } else {
+            if (inString) {
+              sanitized += '\\"';
+            } else {
+              inString = true;
+              sanitized += char;
+            }
+          }
+        }
+      } else {
+        escapeActive = false;
+        if (inString) {
+          if (char === '\n') {
+            sanitized += '\\n';
+          } else if (char === '\r') {
+            sanitized += '\\r';
+          } else if (char === '\t') {
+            sanitized += '\\t';
+          } else {
+            sanitized += char;
+          }
+        } else {
+          sanitized += char;
+        }
+      }
+    }
+    
+    try {
+      return JSON.parse(sanitized);
+    } catch (finalError: any) {
+      console.error("[Client API] Advanced sanitization also failed to parse JSON.", finalError);
+      throw initialError;
+    }
+  }
+}
+
 // Client-side helper to try multiple Gemini models in sequence with exponential retry
 async function generateClientContentWithRetry(ai: any, systemPrompt: string, config: any = {}): Promise<any> {
   const modelsToTry = [
@@ -118,7 +236,7 @@ Do not include any markdown markdown block wrappers like \`\`\`json. Return pure
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, data };
   }
 
@@ -145,7 +263,7 @@ CRITICAL RULE FOR THE "svg" FIELD:
 - Inside the "svg" field of the JSON object, you MUST use SINGLE QUOTES (') for all XML/SVG attributes instead of double quotes (").
 - For example: <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500' width='100%' height='100%'>
 - DO NOT use double quotes (") for any SVG attributes as this will break JSON formatting and cause parse failures on the server.
-- The entire SVG string must be continuous, or use standard \\n escape sequences for line breaks. Do not include literal unescaped newlines inside the JSON string field.
+- The entire SVG string must be continuous, or use standard \n escape sequences for line breaks. Do not include literal unescaped newlines inside the JSON string field.
 
 Return a JSON object matching this structure:
 {
@@ -159,7 +277,7 @@ Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, data };
   }
 
@@ -182,7 +300,7 @@ Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, data };
   }
 
@@ -217,7 +335,7 @@ Do not include markdown markers. Return pure JSON.`;
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, data };
   }
 
@@ -267,16 +385,10 @@ You MUST respond with a JSON object strictly matching this structure:
 }
 Do not include any markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: systemPrompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+    const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, data };
   }
 
@@ -300,7 +412,7 @@ Do not include markdown markers. Return pure JSON.`;
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, tags: data };
   }
 
@@ -332,7 +444,7 @@ Do not include markdown tags. Return pure JSON.`;
     const response = await generateClientContentWithRetry(ai, systemPrompt);
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     return { success: true, comparison: data };
   }
 

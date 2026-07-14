@@ -17,7 +17,7 @@ app.post("/api/send-email", async (req, res) => {
     }
 
     // 1. Try sending via Resend API first
-    const resendApiKey = process.env.RESEND_API_KEY || "re_SVzkgr84_HjvYHW5jGUM2wtevYN8H4MSi";
+    const resendApiKey = process.env.RESEND_API_KEY;
     if (resendApiKey) {
       try {
         console.log("Attempting to send email via Resend API to:", to);
@@ -111,8 +111,8 @@ app.post("/api/send-email", async (req, res) => {
 
     // 2. Fallback: SMTP / Nodemailer
     console.log("Attempting fallback to SMTP...");
-    const smtpUser = process.env.SMTP_USER || 'brandforge-ai@zohomail.com';
-    const smtpPass = process.env.SMTP_PASS || 'MkXZGzepdgtf';
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS;
 
     if (!smtpUser || !smtpPass) {
         if ((req as any).resendSandboxError) {
@@ -214,6 +214,124 @@ function cleanJSON(text: string): string {
   return cleaned;
 }
 
+function robustParseJSON(text: string): any {
+  let cleaned = text.trim();
+
+  // 1. Strip markdown code block wrappers if they exist
+  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
+  const match = codeBlockRegex.exec(cleaned);
+  if (match && match[1]) {
+    cleaned = match[1].trim();
+  } else {
+    // If no markdown block, search for the first '{' or '[' and last '}' or ']'
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+    let startIdx = -1;
+    if (firstBrace !== -1 && firstBracket !== -1) {
+      startIdx = Math.min(firstBrace, firstBracket);
+    } else {
+      startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+    }
+
+    const lastBrace = cleaned.lastIndexOf('}');
+    const lastBracket = cleaned.lastIndexOf(']');
+    const endIdx = Math.max(lastBrace, lastBracket);
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      cleaned = cleaned.substring(startIdx, endIdx + 1);
+    }
+  }
+
+  // A. Remove trailing commas within arrays or objects.
+  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+  // B. Try parsing. If it fails, apply advanced sanitization.
+  try {
+    return JSON.parse(cleaned);
+  } catch (initialError) {
+    console.warn("[Cloud Functions] Standard JSON.parse failed. Applying advanced sanitization...");
+    
+    // C. Fix unescaped control characters and unescaped quotes inside string fields.
+    let inString = false;
+    let escapeActive = false;
+    let sanitized = "";
+    
+    for (let i = 0; i < cleaned.length; i++) {
+      const char = cleaned[i];
+      
+      if (char === '\\') {
+        escapeActive = !escapeActive;
+        sanitized += char;
+      } else if (char === '"') {
+        if (escapeActive) {
+          sanitized += char;
+          escapeActive = false;
+        } else {
+          let isBoundary = false;
+          
+          if (inString) {
+            let nextNonWhitespace = "";
+            for (let j = i + 1; j < cleaned.length; j++) {
+              if (!/\s/.test(cleaned[j])) {
+                nextNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (nextNonWhitespace === ',' || nextNonWhitespace === '}' || nextNonWhitespace === ']' || nextNonWhitespace === ':') {
+              isBoundary = true;
+            }
+          } else {
+            let prevNonWhitespace = "";
+            for (let j = i - 1; j >= 0; j--) {
+              if (!/\s/.test(cleaned[j])) {
+                prevNonWhitespace = cleaned[j];
+                break;
+              }
+            }
+            if (prevNonWhitespace === ':' || prevNonWhitespace === ',' || prevNonWhitespace === '{' || prevNonWhitespace === '[') {
+              isBoundary = true;
+            }
+          }
+          
+          if (isBoundary) {
+            inString = !inString;
+            sanitized += char;
+          } else {
+            if (inString) {
+              sanitized += '\\"';
+            } else {
+              inString = true;
+              sanitized += char;
+            }
+          }
+        }
+      } else {
+        escapeActive = false;
+        if (inString) {
+          if (char === '\n') {
+            sanitized += '\\n';
+          } else if (char === '\r') {
+            sanitized += '\\r';
+          } else if (char === '\t') {
+            sanitized += '\\t';
+          } else {
+            sanitized += char;
+          }
+        } else {
+          sanitized += char;
+        }
+      }
+    }
+    
+    try {
+      return JSON.parse(sanitized);
+    } catch (finalError: any) {
+      console.error("[Cloud Functions] Advanced sanitization also failed to parse JSON.", finalError);
+      throw initialError;
+    }
+  }
+}
+
 async function generateContentWithRetry(ai: any, params: any, maxRetries = 2) {
   const modelsToTry = [
     params.model || "gemini-3.5-flash",
@@ -298,7 +416,7 @@ Do not include any markdown markdown block wrappers like \`\`\`json. Return pure
     });
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, data });
   } catch (error: any) {
     console.error("Error generating names:", error);
@@ -353,7 +471,7 @@ Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
     });
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, data });
   } catch (error: any) {
     console.error("Error generating logo:", error);
@@ -390,7 +508,7 @@ Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
     });
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, data });
   } catch (error: any) {
     console.error("Error generating slogans:", error);
@@ -439,7 +557,7 @@ Do not include markdown markers. Return pure JSON.`;
     });
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, data });
   } catch (error: any) {
     console.error("Error generating brand kit:", error);
@@ -506,7 +624,7 @@ Do not include any markdown block wrappers like \\\`\\\`\\\`json. Return pure JS
     });
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, data });
   } catch (error: any) {
     console.error("Error generating color palette:", error);
@@ -548,7 +666,7 @@ Do not include markdown markers. Return pure JSON.`;
     });
 
     const text = response.text || "[]";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, tags: data });
   } catch (error: any) {
     console.error("Error auto-tagging:", error);
@@ -598,7 +716,7 @@ Do not include markdown tags. Return pure JSON.`;
     });
 
     const text = response.text || "{}";
-    const data = JSON.parse(cleanJSON(text));
+    const data = robustParseJSON(text);
     res.json({ success: true, comparison: data });
   } catch (error: any) {
     console.error("Error comparing assets:", error);
