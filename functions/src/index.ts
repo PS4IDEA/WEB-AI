@@ -2,10 +2,52 @@ import { onRequest } from "firebase-functions/v2/https";
 import express from "express";
 import cors from "cors";
 import { GoogleGenAI } from "@google/genai";
+import nodemailer from "nodemailer";
 
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
+
+app.post("/api/send-email", async (req, res) => {
+  try {
+    const { to, subject, html } = req.body;
+    if (!to || !subject || !html) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.zoho.com',
+      port: parseInt(process.env.SMTP_PORT || '465', 10),
+      secure: process.env.SMTP_PORT ? process.env.SMTP_PORT === '465' : true,
+      auth: {
+        user: process.env.SMTP_USER || 'brandforge-ai@zohomail.com',
+        pass: process.env.SMTP_PASS || 'MkXZGzepdgtf',
+      },
+    });
+
+    const smtpUser = process.env.SMTP_USER || 'brandforge-ai@zohomail.com';
+    const smtpPass = process.env.SMTP_PASS || 'MkXZGzepdgtf';
+
+    if (!smtpUser || !smtpPass) {
+        console.warn("SMTP credentials not provided.");
+        return res.json({ success: true, message: "Simulated email send." });
+    }
+
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM || `"BrandForge AI" <${smtpUser}>`,
+      to,
+      subject,
+      html,
+    });
+
+    console.log("Email sent: %s", info.messageId);
+    res.json({ success: true, messageId: info.messageId });
+  } catch (error: any) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 
 // Lazy-loaded GoogleGenAI client to prevent crash if key is missing
 let aiInstance: GoogleGenAI | null = null;
