@@ -80,12 +80,6 @@ export default function Header({
               {t.pricing}
             </button>
             <button 
-              onClick={() => handleNavClick('blog')}
-              className={`transition-colors duration-200 ${currentPage === 'blog' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
-            >
-              {t.blog}
-            </button>
-            <button 
               onClick={() => handleNavClick('faq')}
               className={`transition-colors duration-200 ${currentPage === 'faq' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
             >
@@ -198,12 +192,6 @@ export default function Header({
             className={`text-left text-base font-medium px-4 py-2 rounded-lg ${currentPage === 'pricing' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
           >
             {t.pricing}
-          </button>
-          <button 
-            onClick={() => handleNavClick('blog')}
-            className={`text-left text-base font-medium px-4 py-2 rounded-lg ${currentPage === 'blog' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-          >
-            {t.blog}
           </button>
           <button 
             onClick={() => handleNavClick('faq')}

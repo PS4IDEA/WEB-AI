@@ -25,6 +25,7 @@ export default function LogoGenerator({
 
   const [prompt, setPrompt] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('minimalist');
+  const [enable3D, setEnable3D] = useState(false);
   const [loading, setLoading] = useState(false);
   const [logoResult, setLogoResult] = useState<{ svg: string; concept: string; primaryColor: string; secondaryColor: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export default function LogoGenerator({
     { id: 'gaming', label: t.gaming, desc: language === 'ar' ? 'شخصيات كرتونية وتأثيرات حركية' : 'Mascots, dynamic curves', color: 'from-rose-500 to-purple-600' },
     { id: 'creative', label: t.creative, desc: language === 'ar' ? 'ألوان فنية نابضة بالحياة' : 'Vibrant artistic colors', color: 'from-teal-400 to-emerald-500' },
     { id: 'corporate', label: t.corporate, desc: language === 'ar' ? 'شبكات صلبة احترافية' : 'Professional solid grids', color: 'from-indigo-500 to-slate-800' },
+    { id: 'threeD', label: t.threeD, desc: language === 'ar' ? 'تصميم مجسم عميق ثلاثي الأبعاد مع تدرجات وإضاءة' : '3D volumetric design with shadows & highlights', color: 'from-orange-500 to-amber-500' },
   ];
 
   const handleGenerate = async () => {
@@ -66,7 +68,7 @@ export default function LogoGenerator({
       return;
     }
 
-    const cacheKey = `${prompt.trim()}-${selectedStyle}`;
+    const cacheKey = `${prompt.trim()}-${selectedStyle}-${enable3D}`;
     if (sessionCache.current[cacheKey]) {
       setLogoResult(sessionCache.current[cacheKey]);
       setSaved(false);
@@ -88,11 +90,12 @@ export default function LogoGenerator({
     }
 
     try {
+      const styleInstruction = enable3D ? ', stylized with spectacular 3D isometric extruded depth, volumetric rendering, glossy lighting, bevel effects, and layered rich drop-shadows' : '';
       const resJson = await fetchAPI('/api/generate-logo', {
         method: 'POST',
         body: JSON.stringify({
-          prompt: `${prompt} (${selectedStyle} logo style)`,
-          style: selectedStyle
+          prompt: `${prompt} (${selectedStyle} logo style${styleInstruction})`,
+          style: enable3D ? 'threeD' : selectedStyle
         })
       });
 
@@ -232,6 +235,32 @@ export default function LogoGenerator({
               rows={3}
               className="w-full px-4 py-3 text-sm rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/40 focus:outline-none transition-all placeholder:text-slate-400"
             />
+          </div>
+
+          {/* Enable 3D Style Toggle */}
+          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 transition-all hover:bg-slate-100/40 dark:hover:bg-slate-950/60">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-100 dark:bg-amber-950/30 p-2.5 rounded-xl text-amber-600 dark:text-amber-400 shrink-0">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <span className="block text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  {language === 'ar' ? 'تفعيل مظهر ثلاثي الأبعاد (3D Style)' : 'Enable 3D Style'}
+                </span>
+                <span className="block text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {language === 'ar' ? 'يمنح الشعار عمقاً مجسماً، ظلالاً واقعية، وتدرجات لونية سينمائية ممتازة' : 'Add volumetric depth, 3D extruded shapes, highlights, and layered drop-shadows'}
+                </span>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer select-none shrink-0 ml-2">
+              <input 
+                type="checkbox" 
+                checked={enable3D} 
+                onChange={(e) => setEnable3D(e.target.checked)}
+                className="sr-only peer" 
+              />
+              <div className="w-11 h-6 bg-slate-200 dark:bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-slate-600 peer-checked:bg-indigo-600"></div>
+            </label>
           </div>
 
           <div>

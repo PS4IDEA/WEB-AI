@@ -179,15 +179,6 @@ export default function App() {
               lastFreeCreditGrant: new Date().toISOString()
             };
             await setDoc(userDocRef, loadedProfile);
-
-            // Dispatch automated welcome email
-            try {
-              await sendWelcomeEmail(firebaseUser.uid, loadedProfile.email, loadedProfile.displayName);
-              setWelcomeEmailToast({ email: loadedProfile.email, name: loadedProfile.displayName });
-              setTimeout(() => setWelcomeEmailToast(null), 6000);
-            } catch (emailErr) {
-              console.error("Welcome email failed during social sign-in:", emailErr);
-            }
           }
           
           setUser(loadedProfile);
@@ -450,15 +441,6 @@ export default function App() {
         };
         await setDoc(doc(db, 'users', cred.user.uid), newUser);
         setUser(newUser);
-
-        // Dispatch welcome email
-        try {
-          await sendWelcomeEmail(cred.user.uid, authEmail, newUser.displayName);
-          setWelcomeEmailToast({ email: authEmail, name: newUser.displayName });
-          setTimeout(() => setWelcomeEmailToast(null), 6000);
-        } catch (emailErr) {
-          console.error("Welcome email failed during registration:", emailErr);
-        }
       } else {
         // Login utilizing Firebase Auth
         await signInWithEmailAndPassword(auth, authEmail, authPassword);
@@ -563,14 +545,24 @@ export default function App() {
       console.log("No user loaded; cannot add credits.");
       return;
     }
+    
+    // On the first recharge/purchase, the user gets double the credits (multiplied by 2)
+    const isFirstPurchase = !user.hasPurchasedCredits;
+    const finalAmount = isFirstPurchase ? amount * 2 : amount;
+    
     const currentCredits = typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
-    const updatedUser = { ...user, credits: currentCredits + amount };
+    const updatedUser = { 
+      ...user, 
+      credits: currentCredits + finalAmount,
+      hasPurchasedCredits: true
+    };
     setUser(updatedUser);
-    console.log(`Adding ${amount} credits. New balance: ${updatedUser.credits}`);
+    console.log(`Adding ${finalAmount} credits (Base: ${amount}, First Purchase Double: ${isFirstPurchase}). New balance: ${updatedUser.credits}`);
 
     if (auth.currentUser) {
       updateDoc(doc(db, 'users', auth.currentUser.uid), {
-        credits: updatedUser.credits
+        credits: updatedUser.credits,
+        hasPurchasedCredits: true
       }).then(() => {
         console.log("Firestore credits added successfully");
       }).catch(err => {
@@ -598,19 +590,19 @@ export default function App() {
   };
 
   // 5. Admin Panel adjustment hooks
-  const handleSendTestEmail = async () => {
-    if (!user) return;
+  const handleSendTestEmail = async (customEmail?: string) => {
+    if (!user) return { success: false, error: 'No user authenticated' };
+    const recipient = customEmail || user.email;
     try {
-      const success = await sendTestEmail(user.email, user.displayName || 'Test User');
-      if (success) {
-        setWelcomeEmailToast({ email: user.email, name: user.displayName || 'Test User' });
+      const result = await sendTestEmail(recipient, user.displayName || 'Test User');
+      if (result.success) {
+        setWelcomeEmailToast({ email: recipient, name: user.displayName || 'Test User' });
         setTimeout(() => setWelcomeEmailToast(null), 6000);
-      } else {
-        alert("Failed to send test email. Check console.");
       }
-    } catch (e) {
+      return result;
+    } catch (e: any) {
       console.error(e);
-      alert("Error sending test email.");
+      return { success: false, error: e.message || String(e) };
     }
   };
 
@@ -1315,6 +1307,7 @@ export default function App() {
             onResolveTicket={handleResolveTicket}
             welcomeEmails={welcomeEmails}
             onSendTestEmail={handleSendTestEmail}
+            currentUserEmail={user?.email || ''}
           />
         )}
 

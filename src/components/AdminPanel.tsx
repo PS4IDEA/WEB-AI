@@ -16,7 +16,8 @@ interface AdminPanelProps {
   supportTickets: SupportTicket[];
   onResolveTicket: (id: string) => void;
   welcomeEmails?: any[];
-  onSendTestEmail?: () => void;
+  onSendTestEmail?: (email: string) => Promise<{ success: boolean; error?: string }>;
+  currentUserEmail?: string;
 }
 
 export default function AdminPanel({
@@ -28,7 +29,8 @@ export default function AdminPanel({
   supportTickets,
   onResolveTicket,
   welcomeEmails = [],
-  onSendTestEmail
+  onSendTestEmail,
+  currentUserEmail = ''
 }: AdminPanelProps) {
   const t = translations[language];
 
@@ -39,6 +41,36 @@ export default function AdminPanel({
 
   // Preview state for automated email templates
   const [viewingEmail, setViewingEmail] = useState<any | null>(null);
+
+  // Test Email state
+  const [showTestEmailModal, setShowTestEmailModal] = useState(false);
+  const [testEmailRecipient, setTestEmailRecipient] = useState(currentUserEmail);
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; error?: string } | null>(null);
+
+  const handleOpenTestEmailModal = () => {
+    setTestEmailRecipient(currentUserEmail);
+    setTestEmailResult(null);
+    setShowTestEmailModal(true);
+  };
+
+  const handleTriggerSendTest = async () => {
+    if (!onSendTestEmail) return;
+    if (!testEmailRecipient.trim()) {
+      setTestEmailResult({ success: false, error: 'Please enter a valid recipient email address.' });
+      return;
+    }
+    setTestEmailLoading(true);
+    setTestEmailResult(null);
+    try {
+      const res = await onSendTestEmail(testEmailRecipient.trim());
+      setTestEmailResult(res);
+    } catch (err: any) {
+      setTestEmailResult({ success: false, error: err.message || String(err) });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
 
   // Calculate mock analytics
   const totalUsers = users.length;
@@ -332,7 +364,7 @@ export default function AdminPanel({
           <div className="flex items-center gap-3">
             {onSendTestEmail && (
               <button 
-                onClick={onSendTestEmail}
+                onClick={handleOpenTestEmailModal}
                 className="text-[10px] font-bold px-3 py-1.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors cursor-pointer flex items-center gap-1"
               >
                 <Mail className="w-3 h-3" />
@@ -465,6 +497,115 @@ export default function AdminPanel({
                 className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-semibold text-xs px-6 py-2.5 rounded-xl transition cursor-pointer"
               >
                 Close Preview
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Real-time Resend Sandbox-Aware Test Email Modal */}
+      {showTestEmailModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl relative overflow-hidden flex flex-col p-6 space-y-4">
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-indigo-500" />
+                <h4 className="font-display font-bold text-base text-slate-800 dark:text-white">
+                  Send Outbound Test Email
+                </h4>
+              </div>
+              <button 
+                onClick={() => setShowTestEmailModal(false)} 
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Send a transactional welcome email with custom branding dynamically via your integrated Resend API gateway.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Recipient Email Address
+                </label>
+                <input
+                  type="email"
+                  value={testEmailRecipient}
+                  onChange={(e) => setTestEmailRecipient(e.target.value)}
+                  placeholder="e.g. abuadham261@gmail.com"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                />
+              </div>
+
+              {/* Sandbox Limitation Callout */}
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl flex gap-2.5 items-start">
+                <AlertTriangle className="w-4.5 h-4.5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                  <span className="font-bold text-amber-800 dark:text-amber-400 block">⚠️ Resend Sandbox Account Restrictions</span>
+                  <p className="leading-relaxed">
+                    If your Resend.com account is currently in <strong>sandbox mode</strong> (unverified domain), Resend strictly blocks emails to arbitrary recipients.
+                  </p>
+                  <p className="font-medium text-slate-750 dark:text-slate-200">
+                    To test successfully, you <strong>MUST</strong> input the exact owner email of your Resend account (e.g., <code className="bg-amber-100/60 dark:bg-amber-900/60 px-1 py-0.5 rounded text-amber-900 dark:text-amber-300 font-bold select-all">abuadham261@gmail.com</code>).
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Indicator */}
+              {testEmailResult && (
+                <div className={`p-3 rounded-2xl border text-xs ${
+                  (testEmailResult as any).sandboxLimited
+                    ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-amber-800 dark:text-amber-400'
+                    : testEmailResult.success 
+                      ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900 text-emerald-800 dark:text-emerald-400' 
+                      : 'bg-rose-50 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-400'
+                }`}>
+                  <span className="font-bold block mb-0.5">
+                    {(testEmailResult as any).sandboxLimited 
+                      ? "⚠️ Simulated Success (Resend Sandbox)" 
+                      : testEmailResult.success 
+                        ? "✓ Test Sent Successfully!" 
+                        : "✗ Dispatch Failure"}
+                  </span>
+                  <p className="font-mono text-[10px] break-all max-h-24 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+                    {(testEmailResult as any).sandboxLimited 
+                      ? ((testEmailResult as any).warning || "Resend sandbox limits restricted actual delivery, but the system simulated a successful dispatch.")
+                      : (testEmailResult.error || "Email successfully passed to Resend webhook and queued.")}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowTestEmailModal(false)}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-semibold text-xs px-4 py-2 rounded-xl transition cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                disabled={testEmailLoading}
+                onClick={handleTriggerSendTest}
+                className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs px-5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+              >
+                {testEmailLoading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3.5 h-3.5" />
+                    Send Test
+                  </>
+                )}
               </button>
             </div>
 

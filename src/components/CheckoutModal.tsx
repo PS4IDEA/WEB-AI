@@ -166,7 +166,7 @@ export default function CheckoutModal({
           <div className="flex items-center gap-2">
             <Lock className="w-4 h-4 text-emerald-500" />
             <h3 className="font-display font-bold text-lg text-slate-800 dark:text-white">
-              {isAr ? 'الدفع الآمن (مُحاكي)' : 'Secure Checkout (Simulated)'}
+              {isAr ? 'الدفع الآمن والترقية' : 'Secure Checkout & Upgrade'}
             </h3>
           </div>
           <button 
@@ -242,7 +242,7 @@ export default function CheckoutModal({
             </div>
           ) : (
             /* EDITING STATE / INPUT FORM */
-            <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
+            <div className="space-y-5 animate-fade-in">
               {/* Item cost preview header */}
               <div className="bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl p-4 flex items-center justify-between text-xs">
                 <div>
@@ -255,183 +255,186 @@ export default function CheckoutModal({
                 </div>
               </div>
 
-              {/* Holographic Credit Card representation */}
-              <div className="relative w-full h-44 rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-800 p-6 text-white shadow-xl flex flex-col justify-between overflow-hidden border border-slate-700/50">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
-                <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
-                
-                <div className="flex justify-between items-start z-10">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">{isAr ? 'بطاقة دفع افتراضية' : 'Sandbox Checkout Card'}</span>
-                    <span className="text-xs font-bold text-indigo-300">BrandForge Pay</span>
-                  </div>
-                  {/* Card type icon representation */}
-                  <div className="h-6 w-10 flex items-center justify-end">
-                    {getCardType() === 'visa' && (
-                      <span className="text-sm font-bold italic text-sky-400">VISA</span>
-                    )}
-                    {getCardType() === 'mastercard' && (
-                      <span className="text-sm font-bold italic text-amber-500">MC</span>
-                    )}
-                    {getCardType() === 'amex' && (
-                      <span className="text-sm font-bold italic text-emerald-400">AMEX</span>
-                    )}
-                    {getCardType() === 'unknown' && (
-                      <CreditCard className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Holographic Chip */}
-                <div className="w-9 h-7 bg-amber-300/80 rounded-md border border-amber-400/40 relative overflow-hidden z-10 shadow-sm">
-                  <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-amber-600/30"></div>
-                  <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-amber-600/30"></div>
-                </div>
-
-                {/* Card number display */}
-                <div className="text-lg font-mono tracking-widest text-slate-100 z-10 font-medium">
-                  {cardNumber || '•••• •••• •••• ••••'}
-                </div>
-
-                <div className="flex justify-between items-end z-10 text-[10px]">
-                  <div>
-                    <span className="block text-[8px] uppercase text-slate-400 tracking-wider">{isAr ? 'حامل البطاقة' : 'Cardholder'}</span>
-                    <span className="font-medium tracking-wide uppercase">{cardName || 'ALEX MORGAN'}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-[8px] uppercase text-slate-400 tracking-wider">{isAr ? 'تاريخ الانتهاء' : 'Expires'}</span>
-                    <span className="font-mono font-medium">{expiry || 'MM/YY'}</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Card input form fields */}
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-semibold text-slate-750 dark:text-slate-350">{isAr ? 'تفاصيل بطاقة الائتمان' : 'Card Details'}</span>
+              <form onSubmit={handleSubmit} className="space-y-5 animate-fade-in">
+                {/* Holographic Credit Card representation */}
+                <div className="relative w-full h-44 rounded-2xl bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-800 p-6 text-white shadow-xl flex flex-col justify-between overflow-hidden border border-slate-700/50">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+                  <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+                  
+                  <div className="flex justify-between items-start z-10">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-widest text-slate-400 font-semibold">{isAr ? 'بطاقة دفع افتراضية' : 'Sandbox Checkout Card'}</span>
+                      <span className="text-xs font-bold text-indigo-300">BrandForge Pay</span>
+                    </div>
+                    {/* Card type icon representation */}
+                    <div className="h-6 w-10 flex items-center justify-end">
+                      {getCardType() === 'visa' && (
+                        <span className="text-sm font-bold italic text-sky-400">VISA</span>
+                      )}
+                      {getCardType() === 'mastercard' && (
+                        <span className="text-sm font-bold italic text-amber-500">MC</span>
+                      )}
+                      {getCardType() === 'amex' && (
+                        <span className="text-sm font-bold italic text-emerald-400">AMEX</span>
+                      )}
+                      {getCardType() === 'unknown' && (
+                        <CreditCard className="w-5 h-5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Holographic Chip */}
+                  <div className="w-9 h-7 bg-amber-300/80 rounded-md border border-amber-400/40 relative overflow-hidden z-10 shadow-sm">
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 border-t border-amber-600/30"></div>
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l border-amber-600/30"></div>
+                  </div>
+
+                  {/* Card number display */}
+                  <div className="text-lg font-mono tracking-widest text-slate-100 z-10 font-medium">
+                    {cardNumber || '•••• •••• •••• ••••'}
+                  </div>
+
+                  <div className="flex justify-between items-end z-10 text-[10px]">
+                    <div>
+                      <span className="block text-[8px] uppercase text-slate-400 tracking-wider">{isAr ? 'حامل البطاقة' : 'Cardholder'}</span>
+                      <span className="font-medium tracking-wide uppercase">{cardName || 'ALEX MORGAN'}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-[8px] uppercase text-slate-400 tracking-wider">{isAr ? 'تاريخ الانتهاء' : 'Expires'}</span>
+                      <span className="font-mono font-medium">{expiry || 'MM/YY'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card input fields */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-semibold text-slate-750 dark:text-slate-350">{isAr ? 'تفاصيل بطاقة الائتمان' : 'Card Details'}</span>
+                    <button
+                      type="button"
+                      onClick={handleAutofillDemo}
+                      className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer bg-indigo-50 dark:bg-indigo-950/40 px-2 py-1 rounded-md"
+                    >
+                      <span>💡</span>
+                      <span>{isAr ? 'تعبئة تلقائية للبطاقة التجريبية' : 'Autofill Demo Card'}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? 'الاسم على البطاقة' : 'Cardholder Name'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={cardName}
+                        onChange={(e) => { setCardName(e.target.value); setError(''); }}
+                        placeholder="e.g. Alex Morgan"
+                        className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                        {isAr ? 'رقم البطاقة' : 'Card Number'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={cardNumber}
+                          onChange={handleCardNumberChange}
+                          placeholder="4111 2222 3333 4444"
+                          className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                        />
+                        <CreditCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? 'تاريخ الانتهاء' : 'Expiry'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={expiry}
+                          onChange={handleExpiryChange}
+                          placeholder="MM/YY"
+                          className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          CVV
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={cvv}
+                          onChange={handleCvvChange}
+                          placeholder="•••"
+                          className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {isAr ? 'الرمز البريدي' : 'Postal Code'}
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={zip}
+                          onChange={handleZipChange}
+                          placeholder="94103"
+                          className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Error Alert if any */}
+                {error && (
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900 rounded-xl text-[11px] font-semibold animate-fade-in">
+                    ⚠️ {error}
+                  </div>
+                )}
+
+                {/* Secure Info Alert */}
+                <div className="flex gap-2 p-3 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/40 dark:border-emerald-900/20 rounded-xl text-[10px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                  <Info className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>
+                    {isAr 
+                      ? 'بيانات الدفع مشفرة بنسبة 100٪ بترميز SSL 256-bit ونظام الحماية الثلاثي ثلاثي الأبعاد. لا يتم حفظ رقم بطاقتك أبداً في خوادمنا.'
+                      : '100% Secure SSL 256-bit connection. This is a sandbox testing interface. Feel free to use the Quick Autofill button or enter mock credit card details.'}
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-2 flex gap-3">
                   <button
                     type="button"
-                    onClick={handleAutofillDemo}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer bg-indigo-50 dark:bg-indigo-950/40 px-2 py-1 rounded-md"
+                    onClick={onClose}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-semibold py-3.5 rounded-xl text-xs transition cursor-pointer"
                   >
-                    <span>💡</span>
-                    <span>{isAr ? 'تعبئة تلقائية للبطاقة التجريبية' : 'Autofill Demo Card'}</span>
+                    {isAr ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 rounded-xl text-xs shadow-lg shadow-indigo-600/10 transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>
+                      {isAr ? `دفع $${price}.00 الآن` : `Pay $${price}.00 Now`}
+                    </span>
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      {isAr ? 'الاسم على البطاقة' : 'Cardholder Name'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={cardName}
-                      onChange={(e) => { setCardName(e.target.value); setError(''); }}
-                      placeholder="e.g. Alex Morgan"
-                      className="w-full text-xs px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      {isAr ? 'رقم البطاقة' : 'Card Number'}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        required
-                        value={cardNumber}
-                        onChange={handleCardNumberChange}
-                        placeholder="4111 2222 3333 4444"
-                        className="w-full text-xs pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                      />
-                      <CreditCard className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-1">
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        {isAr ? 'تاريخ الانتهاء' : 'Expiry'}
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={expiry}
-                        onChange={handleExpiryChange}
-                        placeholder="MM/YY"
-                        className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        CVV
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        value={cvv}
-                        onChange={handleCvvChange}
-                        placeholder="•••"
-                        className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                        {isAr ? 'الرمز البريدي' : 'Postal Code'}
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={zip}
-                        onChange={handleZipChange}
-                        placeholder="94103"
-                        className="w-full text-xs text-center py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Error Alert if any */}
-              {error && (
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900 rounded-xl text-[11px] font-semibold animate-fade-in">
-                  ⚠️ {error}
-                </div>
-              )}
-
-              {/* Secure Info Alert */}
-              <div className="flex gap-2 p-3 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/40 dark:border-emerald-900/20 rounded-xl text-[10px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
-                <Info className="w-4 h-4 shrink-0 text-emerald-500" />
-                <span>
-                  {isAr 
-                    ? 'بيانات الدفع مشفرة بنسبة 100٪ بترميز SSL 256-bit ونظام الحماية الثلاثي ثلاثي الأبعاد. لا يتم حفظ رقم بطاقتك أبداً في خوادمنا.'
-                    : '100% Secure SSL 256-bit connection. This is a sandbox testing interface. Feel free to use the Quick Autofill button or enter mock credit card details.'}
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-semibold py-3.5 rounded-xl text-xs transition cursor-pointer"
-                >
-                  {isAr ? 'إلغاء' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3.5 rounded-xl text-xs shadow-lg shadow-indigo-600/10 transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>
-                    {isAr ? `دفع $${price}.00 الآن` : `Pay $${price}.00 Now`}
-                  </span>
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           )}
         </div>
       </div>

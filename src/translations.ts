@@ -80,6 +80,7 @@ export const translations = {
     technology: "Tech & Geometric",
     corporate: "Corporate Professional",
     creative: "Artistic & Colorful",
+    threeD: "3D Isometric / Extruded",
 
     // Brand Kit
     colors: "Color Palette",
@@ -227,6 +228,7 @@ export const translations = {
     technology: "هندسي تقني",
     corporate: "احترافي للشركات",
     creative: "فني وملون",
+    threeD: "ثلاثي الأبعاد (3D)",
 
     // Brand Kit
     colors: "لوحة الألوان",

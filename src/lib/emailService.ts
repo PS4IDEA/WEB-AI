@@ -128,7 +128,7 @@ export async function sendWelcomeEmail(
   }
 }
 
-export async function sendTestEmail(email: string, displayName: string): Promise<boolean> {
+export async function sendTestEmail(email: string, displayName: string): Promise<{ success: boolean; error?: string; sandboxLimited?: boolean; warning?: string }> {
   const subject = `Test Message from BrandForge, ${displayName}! 🚀`;
   const bodyHtml = generateWelcomeEmailHtml(displayName, email);
   try {
@@ -138,9 +138,14 @@ export async function sendTestEmail(email: string, displayName: string): Promise
       body: JSON.stringify({ to: email, subject, html: bodyHtml })
     });
     const data = await response.json();
-    return data.success;
-  } catch (err) {
+    return { 
+      success: data.success, 
+      error: data.error, 
+      sandboxLimited: data.sandboxLimited, 
+      warning: data.warning 
+    };
+  } catch (err: any) {
     console.error("Test email failed:", err);
-    return false;
+    return { success: false, error: err.message || String(err) };
   }
 }

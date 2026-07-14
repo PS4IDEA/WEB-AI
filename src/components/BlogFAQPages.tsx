@@ -189,6 +189,31 @@ export default function BlogFAQPages({
           </p>
         </div>
 
+        {/* Prominent Double Credits Banner */}
+        <div className="max-w-4xl mx-auto bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 dark:from-amber-600 dark:via-orange-600 dark:to-yellow-600 p-6 md:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-amber-300 dark:border-amber-500 animate-pulse">
+          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+          
+          <div className="space-y-2 text-center md:text-left flex-1">
+            <h3 className="text-2xl md:text-3xl font-display font-black tracking-tight flex items-center justify-center md:justify-start gap-2.5">
+              <Coins className="w-8 h-8 text-white drop-shadow-md animate-bounce" />
+              <span>{isAr ? 'ضاعف رصيدك الآن!' : 'DOUBLE YOUR CREDITS!'}</span>
+            </h3>
+            <p className="text-sm md:text-base font-semibold opacity-95 max-w-xl">
+              {isAr 
+                ? 'في أول عملية شحن لرصيدك، ستحصل على ضعف عدد الـ Credits فوراً! يتم ضرب قيمة أي حزمة رصيد تشتريها بـ 2 تلقائياً!'
+                : 'On your first recharge/purchase, you will get DOUBLE the credits instantly! Any package purchased will be multiplied by 2 automatically!'}
+            </p>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-md px-6 py-4 rounded-2xl border border-white/30 text-center shadow-lg transform hover:scale-105 transition">
+            <span className="block text-2xl md:text-3xl font-mono font-black tracking-wider text-yellow-100">X2</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white/90">
+              {isAr ? 'العرض مفعل تلقائياً' : 'Auto-applied on first buy'}
+            </span>
+          </div>
+        </div>
+
         {purchaseSuccess && (
           <div className="max-w-md mx-auto bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 p-4 rounded-2xl text-center text-xs font-semibold shadow-sm animate-pulse">
             {purchaseSuccess}
@@ -208,7 +233,7 @@ export default function BlogFAQPages({
               </h3>
               <p className="text-xs text-slate-500">{isAr ? 'مثالي لتجربة المحرك وابتكار أصول سريعة لعلامة واحدة.' : 'Perfect to test the forge and secure single brand ideas.'}</p>
               <div className="py-1">
-                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$5</span>
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$3</span>
                 <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
               </div>
               <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
@@ -218,7 +243,7 @@ export default function BlogFAQPages({
               </ul>
             </div>
             <button 
-              onClick={() => handleBuyPack(100, 5)}
+              onClick={() => handleBuyPack(100, 3)}
               className="w-full mt-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-850 dark:text-slate-200 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
             >
               {isAr ? 'شراء الحزمة' : 'Buy Pack'}
@@ -238,7 +263,7 @@ export default function BlogFAQPages({
               </h3>
               <p className="text-xs text-slate-500">{isAr ? 'مثالي للشركات الناشئة ورواد الأعمال لتصميم هوية كاملة.' : 'Highly recommended for launching complete startup identities.'}</p>
               <div className="py-1">
-                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$19</span>
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$12</span>
                 <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
               </div>
               <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
@@ -249,7 +274,7 @@ export default function BlogFAQPages({
               </ul>
             </div>
             <button 
-              onClick={() => handleBuyPack(500, 19)}
+              onClick={() => handleBuyPack(500, 12)}
               className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
             >
               {isAr ? 'شراء الحزمة الأكثر طلباً' : 'Buy Best Value'}
@@ -266,7 +291,7 @@ export default function BlogFAQPages({
               </h3>
               <p className="text-xs text-slate-500">{isAr ? 'ممتاز للمطورين والمصممين المستقلين الذين يطلقون علامات متعددة.' : 'Perfect for freelancers & builders launching multiple identities.'}</p>
               <div className="py-1">
-                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$39</span>
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$30</span>
                 <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
               </div>
               <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
@@ -277,7 +302,7 @@ export default function BlogFAQPages({
               </ul>
             </div>
             <button 
-              onClick={() => handleBuyPack(1500, 39)}
+              onClick={() => handleBuyPack(1500, 30)}
               className="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
             >
               {isAr ? 'شراء الحزمة' : 'Buy Pack'}
@@ -294,7 +319,7 @@ export default function BlogFAQPages({
               </h3>
               <p className="text-xs text-slate-500">{isAr ? 'مخصصة لوكالات التسويق وتصميم العلامات التجارية الكبيرة.' : 'Enterprise-level volume built for agencies & studios.'}</p>
               <div className="py-1">
-                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$79</span>
+                <span className="text-3xl font-display font-bold text-slate-900 dark:text-white">$60</span>
                 <span className="text-xs text-slate-400 font-mono"> {isAr ? 'دفعة واحدة' : 'one-time payment'}</span>
               </div>
               <ul className="space-y-2 pt-4 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-300">
@@ -305,7 +330,7 @@ export default function BlogFAQPages({
               </ul>
             </div>
             <button 
-              onClick={() => handleBuyPack(4000, 79)}
+              onClick={() => handleBuyPack(4000, 60)}
               className="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
             >
               {isAr ? 'شراء الحزمة' : 'Buy Pack'}
@@ -372,30 +397,65 @@ export default function BlogFAQPages({
   }
 
   if (page === 'faq') {
+    const isAr = language === 'ar';
+    
+    const faqList = isAr ? [
+      { 
+        q: 'كيف يعمل نظام النقاط (الرصيد) في BrandForge AI؟', 
+        a: 'كل اسم شركة تولده يستهلك نقطتين (2)، والشعارات تستهلك نقطة واحدة (1)، والدليل التجاري 4 نقاط، وتوليد الشعارات الرسومية بصيغة SVG يستهلك 3 نقاط. يتم تجديد الرصيد شهرياً تلقائياً حسب باقة اشتراكك.' 
+      },
+      { 
+        q: 'هل أمتلك كامل حقوق الملكية الفكرية للشعارات المولدة؟', 
+        a: 'نعم تماماً! جميع أكواد SVG وتصاميم الشعارات المبتكرة التي تولدها تصبح ملكاً لك بنسبة 100%. يمكنك تسجيل علاماتك التجارية والترويج لها واستخدامها تجارياً دون أي قيود أو رسوم ملكية إضافية.' 
+      },
+      { 
+        q: 'هل يمكنني تحميل الشعارات بخلفية شفافة عالية الجودة؟', 
+        a: 'بالتأكيد. يتيح لك محرك الشعارات لدينا تحميل ملفات متجهات SVG نقية (والتي يمكن تكبيرها لأي حجم دون فقدان الجودة) بالإضافة إلى صور PNG شفافة وخلفيات ملونة بضغطة زر واحدة.' 
+      },
+      { 
+        q: 'هل هناك سياسة لاسترداد الأموال للرصيد المشترى؟', 
+        a: 'نظراً لأن تكاليف تشغيل ومعالجة الذكاء الاصطناعي تُستهلك بشكل فوري عند تقديم الطلب، فإننا لا نُصدر مبالغ مستردة للأرصدة المستهلكة، ولكن يمكنك إلغاء أو تغيير باقة اشتراكك في أي وقت تريده.' 
+      }
+    ] : [
+      { 
+        q: 'How do credits work in BrandForge AI?', 
+        a: 'Every generated business name costs 2 credits, slogans cost 1 credit, brand guidelines cost 4 credits, and vector logo generation costs 3 credits. Credits reset monthly based on your subscription.' 
+      },
+      { 
+        q: 'Do I own the full intellectual property of generated logos?', 
+        a: 'Yes! All SVG codes and logo concepts generated belong 100% to you. You can register trademarks and use them commercially without restriction.' 
+      },
+      { 
+        q: 'Can I download logos with a transparent background?', 
+        a: 'Absolutely. The AI Logo Forge lets you download pure XML/SVG vectors as well as rasterized transparent PNGs directly in-browser.' 
+      },
+      { 
+        q: 'Is there a refund policy for credits purchased?', 
+        a: 'Since AI processing costs are consumed immediately, we do not issue refunds for generated assets, but you can cancel your subscription at any time.' 
+      }
+    ];
+
     return (
-      <div className="space-y-12 animate-fade-in py-8 max-w-3xl mx-auto">
+      <div className="space-y-12 animate-fade-in py-8 max-w-3xl mx-auto" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="text-center space-y-4">
           <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
-            Frequently Asked Questions
+            {isAr ? 'الأسئلة الشائعة والمساعدة' : 'Frequently Asked Questions'}
           </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Everything you need to know about our AI generation credits, SVG logo licensing, and subscription tiers.
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+            {isAr 
+              ? 'كل ما تحتاج إلى معرفته حول نقاط توليد الذكاء الاصطناعي، وتراخيص شعارات SVG المتجهة، وباقات الاشتراك والدعم الفني.' 
+              : 'Everything you need to know about our AI generation credits, SVG logo licensing, and subscription tiers.'}
           </p>
         </div>
 
-        <div className="space-y-4">
-          {[
-            { q: 'How do credits work in BrandForge AI?', a: 'Every generated business name costs 2 credits, slogans cost 1 credit, brand guidelines cost 4 credits, and vector logo generation costs 3 credits. Credits reset monthly based on your subscription.' },
-            { q: 'Do I own the full intellectual property of generated logos?', a: 'Yes! All SVG codes and logo concepts generated belong 100% to you. You can register trademarks and use them commercially without restriction.' },
-            { q: 'Can I download logos with a transparent background?', a: 'Absolutely. The AI Logo Forge lets you download pure XML/SVG vectors as well as rasterized transparent PNGs directly in-browser.' },
-            { q: 'Is there a refund policy for credits purchased?', a: 'Since AI processing costs are consumed immediately, we do not issue refunds for generated assets, but you can cancel your subscription at any time.' }
-          ].map((faq, idx) => (
-            <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl space-y-2 shadow-sm">
-              <h3 className="font-bold text-sm text-slate-800 dark:text-white flex gap-2 items-center">
-                <HelpCircle className="w-4 h-4 text-indigo-500" />
+        <div className="space-y-5">
+          {faqList.map((faq, idx) => (
+            <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 p-6 rounded-2xl space-y-3 shadow-sm transition hover:border-slate-300 dark:hover:border-slate-700">
+              <h3 className="font-bold text-[15px] text-slate-800 dark:text-white flex gap-3 items-center">
+                <HelpCircle className="w-5 h-5 text-indigo-500 shrink-0" />
                 <span>{faq.q}</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pl-6">
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed pr-1 pl-1">
                 {faq.a}
               </p>
             </div>
@@ -445,10 +505,10 @@ export default function BlogFAQPages({
             </button>
           </div>
         ) : (
-          <form onSubmit={handleTicketSubmit} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm space-y-4">
+          <form onSubmit={handleTicketSubmit} className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-sm space-y-5">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                {isAr ? 'بريدك الإلكتروني (للمراسلة والرد)' : 'Your Email'}
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+                {isAr ? 'بريدك الإلكتروني (للمراسلة والرد)' : 'Your Email Address'}
               </label>
               <input
                 type="email"
@@ -456,12 +516,12 @@ export default function BlogFAQPages({
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="e.g. email@domain.com"
-                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all text-left"
+                className={`w-full px-4 py-3 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all ${isAr ? 'text-right' : 'text-left'}`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 {isAr ? 'عنوان الرسالة / الموضوع' : 'Subject'}
               </label>
               <input
@@ -470,12 +530,12 @@ export default function BlogFAQPages({
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder={isAr ? 'مثال: مشكلة في تحميل الشعار الشفاف' : 'e.g. Credit adjustment inquiry'}
-                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all"
+                className={`w-full px-4 py-3 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all ${isAr ? 'text-right' : 'text-left'}`}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
                 {isAr ? 'تفاصيل الرسالة أو المشكلة بالتفصيل' : 'Message Description'}
               </label>
               <textarea
@@ -483,15 +543,15 @@ export default function BlogFAQPages({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={isAr ? 'اكتب رسالتك أو استفسارك هنا بالتفصيل...' : 'Detailed explanation of your request...'}
-                rows={4}
-                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all"
+                rows={5}
+                className={`w-full px-4 py-3 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all leading-relaxed ${isAr ? 'text-right' : 'text-left'}`}
               />
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl text-xs sm:text-sm transition cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/15 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? (
                 <>
@@ -578,26 +638,117 @@ export default function BlogFAQPages({
   }
 
   // Terms and Privacy fallback
+  const isAr = language === 'ar';
+  
   return (
-    <div className="max-w-3xl mx-auto py-12 space-y-6 animate-fade-in text-slate-600 dark:text-slate-350">
-      <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-4">
-        {page === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
-      </h2>
-      <p className="text-xs text-slate-400">Last updated: July 8, 2026</p>
-      
-      <div className="space-y-4 text-xs leading-relaxed">
-        <p>
-          Welcome to BrandForge AI. By accessing or using our services, you agree to comply with our commercial licensing, credit consumption constraints, and standard usage rules.
-        </p>
-        <h3 className="font-bold text-sm text-slate-800 dark:text-white pt-2">1. Use of Generation Engines</h3>
-        <p>
-          Generations are processed in real-time. You are permitted commercial utilization of all generated SVG markup codes, marketing slogans, and startup name suggestions. All properties are royalty-free.
-        </p>
-        <h3 className="font-bold text-sm text-slate-800 dark:text-white pt-2">2. Security & Token Protection</h3>
-        <p>
-          Accessing the platform constitutes adherence to anti-scraping controls. Under no circumstance may credentials be shared.
-        </p>
+    <div className="max-w-3xl mx-auto py-12 space-y-8 animate-fade-in text-slate-700 dark:text-slate-350" dir={isAr ? 'rtl' : 'ltr'}>
+      <div className="space-y-3">
+        <h2 className="text-3xl sm:text-4xl font-display font-bold text-slate-900 dark:text-white border-b border-slate-200 dark:border-slate-800 pb-5">
+          {page === 'terms' 
+            ? (isAr ? 'شروط الخدمة والاستخدام' : 'Terms of Service') 
+            : (isAr ? 'سياسة الخصوصية وحماية البيانات' : 'Privacy Policy')
+          }
+        </h2>
+        <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-medium">
+          <span>{isAr ? 'آخر تحديث: ١٣ يوليو ٢٠٢٦' : 'Last updated: July 13, 2026'}</span>
+          <span>•</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{isAr ? 'رسمي ومعتمد' : 'Official & Certified'}</span>
+        </div>
       </div>
+      
+      {page === 'terms' ? (
+        <div className="space-y-8 text-sm sm:text-[15px] leading-relaxed">
+          <div className="p-6 bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100/30 dark:border-indigo-900/20 rounded-2xl">
+            <p className="font-medium text-slate-800 dark:text-slate-200">
+              {isAr 
+                ? 'أهلاً بك في منصة BrandForge AI. باستخدامك لخدماتنا وموقعنا، فإنك توافق تماماً وبشكل ملزم على الالتزام بشروط الترخيص التجاري وضوابط استهلاك الرصيد وقواعد الاستخدام القياسية التالية.'
+                : 'Welcome to BrandForge AI. By accessing or using our services and website, you fully and legally agree to comply with our commercial licensing, credit consumption constraints, and standard usage rules detailed below.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold">1</span>
+              <span>{isAr ? 'الترخيص التجاري والاستخدام' : 'Commercial Licensing & Utilization'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'جميع الشعارات التي يتم توليدها بصيغة المتجهات الحديثة (SVG markup)، والشعارات التسويقية المبتكرة، وأفكار أسماء الشركات التي توفرها المنصة هي ملك لك بالكامل وبنسبة 100% وخالية من أي رسوم ملكية فكرية للاستخدام التجاري الشخصي والمؤسسي.'
+                : 'All brand logos generated in modern vector format (SVG markup), creative marketing slogans, and startup name suggestions provided by the platform are 100% owned by you and entirely royalty-free for personal or corporate commercial utilization.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold">2</span>
+              <span>{isAr ? 'نظام استهلاك وتعبئة الرصيد' : 'Credit Consumption & Billing'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'عمليات التوليد باستخدام الذكاء الاصطناعي تستهلك رصيد حسابك بشكل فوري. نظراً للتكاليف التشغيلية الفورية لتوليد الأصول، فإن جميع عمليات شراء الأرصدة والاشتراكات غير قابلة للاسترداد المالي، ولكن يمكنك إلغاء اشتراكك أو ترقيته في أي وقت.'
+                : 'All AI generations consume system credits instantly. Due to the immediate operational cost of AI processing, credit purchases and subscription payments are non-refundable. However, you can upgrade, downgrade, or cancel your active subscription plan at any time.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold">3</span>
+              <span>{isAr ? 'أمن وسلامة المنصة الإلكترونية' : 'Platform Security & Asset Protection'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'استخدام المنصة يقتضي الالتزام الصارم بضوابط مكافحة التعدين البرمجي. لا يُسمح بأي حال من الأحوال بمشاركة بيانات حسابك السري، أو توظيف برمجيات آلية (Scrapers/Bots) لنسخ وسحب وتعدين تصاميم وأصول BrandForge.'
+                : 'Access to the platform requires strict compliance with anti-scraping controls. Under no circumstance may credentials or user profiles be shared, nor may automated bots or scripts be deployed to mine or scrape BrandForge\'s visual assets.'}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8 text-sm sm:text-[15px] leading-relaxed">
+          <div className="p-6 bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100/30 dark:border-emerald-900/20 rounded-2xl">
+            <p className="font-medium text-slate-800 dark:text-slate-200">
+              {isAr 
+                ? 'في BrandForge AI، نضع خصوصية وحماية بياناتك وتصاميمك التي تبتكرها في مقدمة أولوياتنا. نوضح هنا كيفية جمعنا ومعالجتنا لبياناتك الشخصية وتخزينها الآمن.'
+                : 'At BrandForge AI, protecting your personal details, secure design assets, and generated brand histories is our highest priority. This policy outlines how we responsibly collect, process, and secure your information.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">1</span>
+              <span>{isAr ? 'البيانات التي نجمعها بشكل آمن' : 'Information We Securely Collect'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'نقوم بجمع البيانات الأساسية لتشغيل حسابك فقط، وتشمل الاسم والبريد الإلكتروني لتوثيق ملكية حسابك، بالإضافة إلى سجل عمليات التوليد السابقة لنعرضها لك في لوحة التحكم وتسهيل تحميلها.'
+                : 'We collect only essential information required to run your profile. This includes your registered email, display name, and the history of your generated logo marks and brand assets to provide cloud storage access and redownloads.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">2</span>
+              <span>{isAr ? 'التخزين السحابي الآمن ونظام التشفير' : 'Cloud Storage & Encryption Standards'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'تُحفظ جميع بياناتك وتصاميمك ومجموعاتك الشخصية بشكل مشفر وآمن تماماً في قاعدة بيانات Cloud Firestore السحابية المحمية بقواعد أمان صارمة. لا نبيع ولا نُشارك معلوماتك أو تصاميمك الشخصية مع أي جهات خارجية.'
+                : 'All user data, generated vector codes, and custom palettes are saved with high-grade cloud encryption within Firestore databases. Guarded by robust security parameters, your personal details or brand assets are never sold or shared with third-party networks.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">3</span>
+              <span>{isAr ? 'أمن بطاقات الائتمان والدفع' : 'Payment Data & Sandbox Protection'}</span>
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 pr-1 pl-1">
+              {isAr 
+                ? 'معالجة المدفوعات تتم بكامل الحماية عبر بوابة Stripe الآمنة المعتمدة. لا نقوم بحفظ أو استلام أو معالجة أي بيانات خاصة ببطاقاتك الائتمانية على خوادمنا الشخصية، مما يضمن أماناً مالياً مطلقاً.'
+                : 'All transactions are proxied safely via Stripe. We do not store, access, or process your credit card numbers or financial passwords on our own servers. Your transaction safety is 100% handled on certified bank-grade secure channels.'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

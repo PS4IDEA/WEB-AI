@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Host
+Host: https://ais-pre-27fx4ovygqn3igt7sut4wu-271215475770.europe-west2.run.app
+
+# Sitemaps
+Sitemap: https://ais-pre-27fx4ovygqn3igt7sut4wu-271215475770.europe-west2.run.app/sitemap.xml

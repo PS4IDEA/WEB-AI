@@ -126,7 +126,7 @@ Do not include any markdown markdown block wrappers like \`\`\`json. Return pure
     const { prompt, style } = body;
     const systemPrompt = `You are a world-class vector graphic designer and branding typographer specializing in minimalist, responsive, iconic, and high-impact logo designs.
 Generate an exceptional and creative brand logo in valid SVG format representing the concept: "${prompt}".
-Style requested: ${style || "minimalist"} (can be minimalist, luxury, modern, gaming, technology, corporate, creative).
+Style requested: ${style || "minimalist"} (can be minimalist, luxury, modern, gaming, technology, corporate, creative, threeD).
 
 Requirements for the SVG:
 - Output must be a strictly valid XML/SVG element.
@@ -139,6 +139,7 @@ Requirements for the SVG:
 - If style is "technology" or "modern", use vibrant blue/indigo neon accents, clean geometric paths, grids, and glowing futuristic vectors.
 - If style is "gaming", use bold energetic colors, sharp dynamic angles, and high-contrast styling.
 - If style is "creative", use a vibrant color palette, organic shapes, flows, and creative symbolism.
+- If style is "threeD" or "3D", design a spectacular 3D isometric or extruded emblem. Use highly detailed multiple linear/radial gradients, multi-directional lighting effects, layered drop-shadows (<filter id='drop-shadow'>), bevel effects, and deep optical-illusion geometric shapes (like isometric cubes, floating cylinders, ribbon flows with light and dark sides, or thick extruded letters) to make the emblem look fully 3D, tactile, and volumetric.
 
 CRITICAL RULE FOR THE "svg" FIELD:
 - Inside the "svg" field of the JSON object, you MUST use SINGLE QUOTES (') for all XML/SVG attributes instead of double quotes (").

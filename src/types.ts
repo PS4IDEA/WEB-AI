@@ -34,6 +34,7 @@ export interface UserProfile {
   role: 'user' | 'admin';
   createdAt: string;
   lastFreeCreditGrant?: string;
+  hasPurchasedCredits?: boolean;
 }
 
 export interface GeneratedName {

@@ -1016,41 +1016,48 @@ export default function DashboardOverview({
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
-            <h3 className="font-display font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wider mb-4">
-              {language === 'ar' ? 'شراء رصيد سريع' : 'Purchase Credits'}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
+              <h3 className="font-display font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wider">
+                {language === 'ar' ? 'شراء رصيد سريع' : 'Purchase Credits'}
+              </h3>
+              {!user?.hasPurchasedCredits && (
+                <span className="text-xs font-black text-amber-700 bg-amber-100/80 border border-amber-300 px-3 py-1 rounded-full animate-pulse inline-flex items-center gap-1">
+                  <span>🎁</span> {language === 'ar' ? 'أول شحن يمنحك الضعف (الرصيد × 2)!' : 'First recharge grants DOUBLE (Credits × 2)!'}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <button 
-                onClick={() => simulateBuyCredits(100, 5)}
+                onClick={() => simulateBuyCredits(100, 3)}
                 className="p-4 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-850 bg-indigo-50/10 hover:bg-indigo-50/30 text-center space-y-1.5 cursor-pointer"
               >
                 <Coins className="w-5 h-5 text-indigo-500 mx-auto" />
                 <span className="block text-xs font-semibold text-indigo-700 dark:text-indigo-400">{language === 'ar' ? 'شراء 100 رصيد' : 'Buy 100 Credits'}</span>
-                <span className="block text-[10px] text-indigo-500">$5</span>
+                <span className="block text-[10px] text-indigo-500">$3</span>
               </button>
               <button 
-                onClick={() => simulateBuyCredits(500, 19)}
+                onClick={() => simulateBuyCredits(500, 12)}
                 className="p-4 rounded-xl border border-dashed border-amber-200 dark:border-amber-850 bg-amber-50/10 hover:bg-amber-50/30 text-center space-y-1.5 cursor-pointer"
               >
                 <Coins className="w-5 h-5 text-amber-500 mx-auto" />
                 <span className="block text-xs font-semibold text-amber-700 dark:text-amber-400">{language === 'ar' ? 'شراء 500 رصيد' : 'Buy 500 Credits'}</span>
-                <span className="block text-[10px] text-amber-500">$19</span>
+                <span className="block text-[10px] text-amber-500">$12</span>
               </button>
               <button 
-                onClick={() => simulateBuyCredits(1500, 39)}
+                onClick={() => simulateBuyCredits(1500, 30)}
                 className="p-4 rounded-xl border border-dashed border-emerald-200 dark:border-emerald-850 bg-emerald-50/10 hover:bg-emerald-50/30 text-center space-y-1.5 cursor-pointer"
               >
                 <Coins className="w-5 h-5 text-emerald-500 mx-auto" />
                 <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">{language === 'ar' ? 'شراء 1500 رصيد' : 'Buy 1500 Credits'}</span>
-                <span className="block text-[10px] text-emerald-500">$39</span>
+                <span className="block text-[10px] text-emerald-500">$30</span>
               </button>
               <button 
-                onClick={() => simulateBuyCredits(4000, 79)}
+                onClick={() => simulateBuyCredits(4000, 60)}
                 className="p-4 rounded-xl border border-dashed border-purple-200 dark:border-purple-850 bg-purple-50/10 hover:bg-purple-50/30 text-center space-y-1.5 cursor-pointer"
               >
                 <Coins className="w-5 h-5 text-purple-500 mx-auto" />
                 <span className="block text-xs font-semibold text-purple-700 dark:text-purple-400">{language === 'ar' ? 'شراء 4000 رصيد' : 'Buy 4000 Credits'}</span>
-                <span className="block text-[10px] text-purple-500">$79</span>
+                <span className="block text-[10px] text-purple-500">$60</span>
               </button>
             </div>
             {purchaseSuccess && (
@@ -2017,22 +2024,44 @@ export default function DashboardOverview({
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-            <h3 className="font-display font-bold text-slate-850 dark:text-white text-base">
-              {language === 'ar' ? 'شراء رصيد توليد الذكاء الاصطناعي' : 'Purchase AI Generation Credits'}
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <h3 className="font-display font-bold text-slate-850 dark:text-white text-base">
+                {language === 'ar' ? 'شراء رصيد توليد الذكاء الاصطناعي' : 'Purchase AI Generation Credits'}
+              </h3>
+              {!user?.hasPurchasedCredits && (
+                <span className="text-xs font-black text-amber-700 bg-amber-100/80 border border-amber-300 px-3 py-1 rounded-full animate-pulse inline-flex items-center gap-1 self-start sm:self-auto">
+                  <span>🎁</span> {language === 'ar' ? 'أول شحن يمنحك الضعف (الرصيد × 2)!' : 'First recharge grants DOUBLE (Credits × 2)!'}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 leading-relaxed">
               {language === 'ar' 
                 ? 'اشترِ حزم الرصيد بنظام الدفع الفردي. رصيدك صالح دائماً ولا ينتهي أبداً.'
                 : 'Purchase pay-as-you-go credit packages. Purchased credits never expire and are ready for instant use.'}
             </p>
 
+            {/* Banner for Billing tab */}
+            {!user?.hasPurchasedCredits && (
+              <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 p-4 rounded-xl text-white text-xs font-bold flex items-center justify-between gap-3 shadow border border-amber-300">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-white animate-bounce shrink-0" />
+                  <span>
+                    {language === 'ar' 
+                      ? 'عرض ترحيبي خاص: عند إتمام أول عملية شحن، سيتم مضاعفة الرصيد المضاف تلقائياً ×2!'
+                      : 'Special Welcome Offer: Your first purchase is automatically doubled! Multiply any package by 2!'}
+                  </span>
+                </div>
+                <span className="bg-white/20 px-2 py-1 rounded font-mono font-black shrink-0">X2 BONUS</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2">
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
                 <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'حزمة البداية' : 'Starter Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">100 {t.credits}</span>
-                <span className="block text-lg font-bold text-indigo-600">$5</span>
+                <span className="block text-lg font-bold text-indigo-600">$3</span>
                 <button 
-                  onClick={() => simulateBuyCredits(100, 5)}
+                  onClick={() => simulateBuyCredits(100, 3)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
@@ -2045,9 +2074,9 @@ export default function DashboardOverview({
                 </span>
                 <span className="block text-xs font-semibold text-indigo-500 mt-1">{language === 'ar' ? 'حزمة النمو' : 'Growth Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">500 {t.credits}</span>
-                <span className="block text-lg font-bold text-indigo-600">$19</span>
+                <span className="block text-lg font-bold text-indigo-600">$12</span>
                 <button 
-                  onClick={() => simulateBuyCredits(500, 19)}
+                  onClick={() => simulateBuyCredits(500, 12)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
@@ -2057,9 +2086,9 @@ export default function DashboardOverview({
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
                 <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'الحزمة الفائقة' : 'Power Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">1500 {t.credits}</span>
-                <span className="block text-lg font-bold text-indigo-600">$39</span>
+                <span className="block text-lg font-bold text-indigo-600">$30</span>
                 <button 
-                  onClick={() => simulateBuyCredits(1500, 39)}
+                  onClick={() => simulateBuyCredits(1500, 30)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
@@ -2069,9 +2098,9 @@ export default function DashboardOverview({
               <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
                 <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'حزمة الوكالات' : 'Elite Agency Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">4000 {t.credits}</span>
-                <span className="block text-lg font-bold text-indigo-600">$79</span>
+                <span className="block text-lg font-bold text-indigo-600">$60</span>
                 <button 
-                  onClick={() => simulateBuyCredits(4000, 79)}
+                  onClick={() => simulateBuyCredits(4000, 60)}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
