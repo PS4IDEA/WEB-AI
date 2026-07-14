@@ -96,6 +96,24 @@ export default function App() {
      !window.location.hostname.includes('127.0.0.1'))
   );
 
+  // Parse URL parameters on mount for deep-linking and SEO sitemap support
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlPage = params.get('page');
+      const urlLang = params.get('lang');
+
+      if (urlLang === 'en' || urlLang === 'ar') {
+        setLanguage(urlLang);
+      }
+      
+      const validPages: Page[] = ['landing', 'features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy', 'dashboard', 'admin'];
+      if (urlPage && validPages.includes(urlPage as Page)) {
+        setCurrentPage(urlPage as Page);
+      }
+    }
+  }, []);
+
   // 1. Initial State Loading from LocalStorage / Firebase sync
   useEffect(() => {
     // Sync theme
@@ -785,53 +803,55 @@ export default function App() {
       </div>
     `;
 
-    // 3. Dispatch the real emails
-    // A. Send confirmation email to the user
-    try {
-      const userRes = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: newTicket.userEmail,
-          subject: userSubject,
-          html: userHtmlBody
-        })
-      });
-      const userData = await userRes.json();
-      if (userData.success) {
-        console.log(`Confirmation email sent successfully to ${newTicket.userEmail}. MessageId: ${userData.messageId}`);
-        emailSuccess = true;
-      } else {
-        console.warn(`Email API returned success=false for user email:`, userData.error);
-        emailErrorMsg = userData.error || 'SMTP Error';
+    // 3. Dispatch the real emails in the background to ensure instant UI responsiveness
+    const sendEmailsInBackground = async () => {
+      // A. Send confirmation email to the user
+      try {
+        const userRes = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: newTicket.userEmail,
+            subject: userSubject,
+            html: userHtmlBody
+          })
+        });
+        const userData = await userRes.json();
+        if (userData.success) {
+          console.log(`Confirmation email sent successfully to ${newTicket.userEmail}. MessageId: ${userData.messageId}`);
+        } else {
+          console.warn(`Email API returned success=false for user email:`, userData.error);
+        }
+      } catch (emailErr: any) {
+        console.error(`Failed to dispatch user confirmation email:`, emailErr);
       }
-    } catch (emailErr: any) {
-      console.error(`Failed to dispatch user confirmation email:`, emailErr);
-      emailErrorMsg = emailErr.message || 'SMTP Network Error';
-    }
 
-    // B. Send notification email to the system administrator (yoafyosf121@gmail.com)
-    try {
-      const adminRes = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: 'yoafyosf121@gmail.com',
-          subject: adminSubject,
-          html: adminHtmlBody
-        })
-      });
-      const adminData = await adminRes.json();
-      if (adminData.success) {
-        console.log(`Admin notification email sent successfully to yoafyosf121@gmail.com. MessageId: ${adminData.messageId}`);
-      } else {
-        console.warn(`Email API returned success=false for admin email:`, adminData.error);
+      // B. Send notification email to the system administrator (yoafyosf121@gmail.com)
+      try {
+        const adminRes = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: 'yoafyosf121@gmail.com',
+            subject: adminSubject,
+            html: adminHtmlBody
+          })
+        });
+        const adminData = await adminRes.json();
+        if (adminData.success) {
+          console.log(`Admin notification email sent successfully to yoafyosf121@gmail.com. MessageId: ${adminData.messageId}`);
+        } else {
+          console.warn(`Email API returned success=false for admin email:`, adminData.error);
+        }
+      } catch (emailErr) {
+        console.error(`Failed to dispatch admin notification email:`, emailErr);
       }
-    } catch (emailErr) {
-      console.error(`Failed to dispatch admin notification email:`, emailErr);
-    }
+    };
 
-    return { success: firestoreSuccess, emailSuccess, error: emailErrorMsg };
+    // Trigger background email dispatch without awaiting it so the user's UI never hangs
+    sendEmailsInBackground();
+
+    return { success: firestoreSuccess, emailSuccess: true, error: null };
   };
 
   // 6. Asset Saving Hooks

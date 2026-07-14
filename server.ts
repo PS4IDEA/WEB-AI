@@ -134,6 +134,9 @@ app.post("/api/send-email", async (req, res) => {
         user: process.env.SMTP_USER || 'brandforge-ai@zohomail.com',
         pass: process.env.SMTP_PASS || 'MkXZGzepdgtf',
       },
+      connectionTimeout: 5000, // 5 seconds timeout to prevent hanging
+      greetingTimeout: 5000,
+      socketTimeout: 5000,
     });
 
     const smtpUser = process.env.SMTP_USER || 'brandforge-ai@zohomail.com';

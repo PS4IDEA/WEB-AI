@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.ideagames89.com/
+
+# Sitemaps
+Sitemap: https://www.ideagames89.com//sitemap.xml
