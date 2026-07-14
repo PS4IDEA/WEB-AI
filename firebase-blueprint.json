@@ -143,6 +143,39 @@
         }
       },
       "required": ["userId", "recipientEmail", "recipientName", "subject", "bodyHtml", "provider", "status", "sentAt", "trackingId"]
+    },
+    "SupportTicket": {
+      "title": "Support Ticket",
+      "description": "Stores user support tickets and contact inquires.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "ID of the user (or 'guest')"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Email of the contact sender"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the message"
+        },
+        "message": {
+          "type": "string",
+          "description": "Content of the message"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"],
+          "description": "Status of the ticket"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "userEmail", "subject", "message", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -169,6 +202,12 @@
         "$ref": "#/entities/WelcomeEmail"
       },
       "description": "Logs of welcome emails sent to users."
+    },
+    "support_tickets/{ticketId}": {
+      "schema": {
+        "$ref": "#/entities/SupportTicket"
+      },
+      "description": "Customer support tickets and contact requests."
     }
   }
 }

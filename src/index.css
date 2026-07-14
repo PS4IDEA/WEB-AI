@@ -73,37 +73,48 @@ html:not(.dark) .border-t,
 html:not(.dark) .border-r,
 html:not(.dark) .border-l {
   border-width: 1px !important;
-  border-color: #e2e8f0 !important; /* soft elegant slate-200 */
+  border-color: #cbd5e1 !important; /* much clearer, darker slate-300 */
 }
 
 html:not(.dark) .border-slate-50 {
   border-width: 1px !important;
-  border-color: #f1f5f9 !important; /* softest gray */
+  border-color: #e2e8f0 !important; /* soft elegant gray, but visible */
 }
 
 html:not(.dark) .border-slate-100 {
   border-width: 1px !important;
-  border-color: #f1f5f9 !important; /* soft elegant slate-100 */
+  border-color: #cbd5e1 !important; /* clearer border line */
 }
 
 html:not(.dark) .border-slate-200 {
   border-width: 1px !important;
-  border-color: #cbd5e1 !important; /* slightly darker slate-300 for structure */
+  border-color: #94a3b8 !important; /* high-contrast slate-400 */
 }
 
 html:not(.dark) .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
   border-width: 1px !important;
-  border-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
 }
 
 html:not(.dark) .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
   border-width: 1px !important;
-  border-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
 }
 
 html:not(.dark) .divide-y > :not([hidden]) ~ :not([hidden]) {
   border-width: 1px !important;
-  border-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Make text colors much more legible and high-contrast in light mode */
+html:not(.dark) .text-slate-400 {
+  color: #64748b !important; /* slate-500 instead of slate-400 */
+}
+html:not(.dark) .text-slate-500 {
+  color: #475569 !important; /* slate-600 instead of slate-500 */
+}
+html:not(.dark) .text-slate-300 {
+  color: #64748b !important; /* slate-500 instead of slate-300 */
 }
 
 /* Ensure perfect visibility for typing/writing in input fields, textareas, and selects in light mode */
@@ -183,3 +194,8 @@ button, a {
 }
 
 
+
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}

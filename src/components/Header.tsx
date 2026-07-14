@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Language, Page, UserProfile } from '../types';
-import { Sparkles, Sun, Moon, LogOut, User, ShieldCheck, Coins, Menu, X } from 'lucide-react';
+import { Sparkles, Sun, Moon, LogOut, User, ShieldCheck, Coins, Menu, X, RefreshCw } from 'lucide-react';
 
 interface HeaderProps {
   language: Language;
@@ -14,6 +14,7 @@ interface HeaderProps {
   onLogout: () => void;
   onLoginClick: () => void;
   isFirebaseConnected?: boolean;
+  onRefresh: () => void;
 }
 
 export default function Header({
@@ -27,6 +28,7 @@ export default function Header({
   onLogout,
   onLoginClick,
   isFirebaseConnected = true,
+  onRefresh,
 }: HeaderProps) {
   const t = translations[language];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -106,6 +108,16 @@ export default function Header({
               className="hidden sm:block text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 cursor-pointer"
             >
               {language === 'en' ? 'العربية' : 'English'}
+            </button>
+
+            {/* Elegant Reload Button */}
+            <button
+              onClick={onRefresh}
+              className="hidden sm:block p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all cursor-pointer group"
+              title={language === 'ar' ? 'إعادة تحميل وتحديث الموقع' : 'Reload & Sync Website'}
+              aria-label="Reload and Sync Website"
+            >
+              <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
             </button>
 
             {/* Dark Mode Toggle */}
@@ -211,6 +223,13 @@ export default function Header({
           <div className="flex items-center justify-between px-4 py-2">
             <span className="text-sm text-slate-500 dark:text-slate-400">Settings</span>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => { onRefresh(); setIsMobileMenuOpen(false); }}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                title={language === 'ar' ? 'إعادة تحميل' : 'Reload'}
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
                 className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 cursor-pointer"

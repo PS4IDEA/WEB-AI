@@ -1,7 +1,7 @@
 import React from 'react';
 import { translations } from '../translations';
 import { Language, Page } from '../types';
-import { Sparkles, Heart } from 'lucide-react';
+import { Sparkles, Heart, ShieldCheck, Lock, CheckCircle2 } from 'lucide-react';
 
 interface FooterProps {
   language: Language;
@@ -14,6 +14,23 @@ export default function Footer({ language, setCurrentPage }: FooterProps) {
   return (
     <footer className="bg-slate-50 dark:bg-slate-950 border-t border-slate-100 dark:border-slate-900 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        
+        {/* Trust Badges Section */}
+        <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pb-12 mb-12 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <ShieldCheck className="w-6 h-6 text-emerald-500" />
+            <span className="text-sm font-medium">{language === 'ar' ? 'متوافق مع GDPR' : 'GDPR Compliant'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <Lock className="w-6 h-6 text-indigo-500" />
+            <span className="text-sm font-medium">{language === 'ar' ? 'تشفير 256-bit SSL' : '256-bit SSL Encryption'}</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <CheckCircle2 className="w-6 h-6 text-blue-500" />
+            <span className="text-sm font-medium">{language === 'ar' ? 'دفع آمن 100%' : '100% Secure Checkout'}</span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           
           <div className="md:col-span-2">
@@ -25,9 +42,16 @@ export default function Footer({ language, setCurrentPage }: FooterProps) {
                 {t.brandName}
               </span>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-6">
               {t.footerText}
             </p>
+            {/* Payment Methods Visuals */}
+            <div className="flex gap-2 items-center opacity-70 grayscale hover:grayscale-0 transition-all duration-300">
+              <div className="h-8 w-12 bg-slate-200 dark:bg-slate-800 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">VISA</div>
+              <div className="h-8 w-12 bg-slate-200 dark:bg-slate-800 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">MC</div>
+              <div className="h-8 w-12 bg-slate-200 dark:bg-slate-800 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">AMEX</div>
+              <div className="h-8 w-12 bg-slate-200 dark:bg-slate-800 rounded flex items-center justify-center text-[10px] font-bold text-slate-500">STRIPE</div>
+            </div>
           </div>
 
           <div>

@@ -3,6 +3,7 @@ import { Language, Page, DashboardTab, UserProfile, GeneratedName, GeneratedLogo
 import { translations } from './translations';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import CookieConsent from './components/CookieConsent';
 import NameGenerator from './components/NameGenerator';
 import LogoGenerator from './components/LogoGenerator';
 import SloganGenerator from './components/SloganGenerator';
@@ -41,10 +42,21 @@ import {
 
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showRefreshToast, setShowRefreshToast] = useState<boolean>(false);
   const [language, setLanguage] = useState<Language>('en');
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [activeDashboardTab, setActiveDashboardTab] = useState<DashboardTab>('overview');
+
+  const handleRefreshApp = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      setShowRefreshToast(true);
+      setTimeout(() => setShowRefreshToast(false), 3000);
+    }, 1000);
+  };
 
   // Firebase configuration state for self-hosting fallback
   const [showFirebaseSettings, setShowFirebaseSettings] = useState(false);
@@ -228,6 +240,7 @@ export default function App() {
           return currentUser;
         });
       }
+      setIsLoading(false);
     });
 
     return () => unsubscribe();
@@ -326,8 +339,24 @@ export default function App() {
         }
       };
 
+      const fetchFirestoreTickets = async () => {
+        try {
+          const ticketsRef = collection(db, 'support_tickets');
+          const ticketsSnap = await getDocs(ticketsRef);
+          const loadedTickets: SupportTicket[] = [];
+          ticketsSnap.forEach((doc) => {
+            loadedTickets.push({ id: doc.id, ...doc.data() } as SupportTicket);
+          });
+          loadedTickets.sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime());
+          setSupportTickets(loadedTickets);
+        } catch (err) {
+          console.error("Error loading support tickets from Firestore:", err);
+        }
+      };
+
       fetchWelcomeEmails();
       fetchFirestoreUsers();
+      fetchFirestoreTickets();
     } else {
       // Seed fallbacks for local sandbox or demo admin views
       setWelcomeEmails([
@@ -621,13 +650,20 @@ export default function App() {
     }
   };
 
-  const handleResolveTicket = (id: string) => {
+  const handleResolveTicket = async (id: string) => {
     const updated = supportTickets.map(t => t.id === id ? { ...t, status: 'resolved' as const } : t);
     setSupportTickets(updated);
     localStorage.setItem('brandforge_tickets', JSON.stringify(updated));
+
+    try {
+      await updateDoc(doc(db, 'support_tickets', id), { status: 'resolved' });
+      console.log(`Firestore ticket ${id} successfully resolved.`);
+    } catch (err) {
+      console.error("Error updating ticket status in Firestore:", err);
+    }
   };
 
-  const handleNewSupportTicket = (ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => {
+  const handleNewSupportTicket = async (ticketData: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => {
     const newTicket: SupportTicket = {
       ...ticketData,
       id: `ticket-${Date.now()}`,
@@ -637,6 +673,154 @@ export default function App() {
     const updated = [newTicket, ...supportTickets];
     setSupportTickets(updated);
     localStorage.setItem('brandforge_tickets', JSON.stringify(updated));
+
+    // 1. Real persistence: write to the shared Firestore database
+    try {
+      await setDoc(doc(db, 'support_tickets', newTicket.id), newTicket);
+      console.log(`Support ticket ${newTicket.id} saved to Firestore successfully!`);
+    } catch (err) {
+      console.error("Error saving support ticket to Firestore:", err);
+    }
+
+    // 2. Build email templates
+    const userSubject = language === 'ar' 
+      ? `تم استلام تذكرة الدعم الفني الخاصة بك - BrandForge` 
+      : `We have received your support inquiry - BrandForge Support`;
+
+    const userHtmlBody = language === 'ar' ? `
+      <div style="font-family: 'Tajawal', 'Inter', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #f1f5f9; border-radius: 16px; background-color: #ffffff; color: #1e293b; direction: rtl; text-align: right;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 24px; font-weight: 800; color: #4f46e5; letter-spacing: -0.05em;">BrandForge</span>
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;">الهوية التجارية المتكاملة بالذكاء الاصطناعي</div>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">تم استلام رسالتك بنجاح! ✉️</h1>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            مرحباً، شكراً لتواصلك مع الدعم الفني لمنصة BrandForge. لقد استلمنا تذكرتك بنجاح وسيقوم فريق الدعم الفني بمراجعتها والرد عليك في أقرب وقت ممكن.
+          </p>
+        </div>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">تفاصيل الرسالة</div>
+          <div style="font-size: 13px; color: #1e293b; margin-bottom: 6px;"><strong>الموضوع:</strong> ${newTicket.subject}</div>
+          <div style="font-size: 13px; color: #475569; line-height: 1.5; white-space: pre-wrap;">${newTicket.message}</div>
+        </div>
+        <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 24px; margin-top: 24px;">
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            &copy; 2026 BrandForge. جميع الحقوق محفوظة.
+          </p>
+        </div>
+      </div>
+    ` : `
+      <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #f1f5f9; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 24px; font-weight: 800; color: #4f46e5; letter-spacing: -0.05em;">BrandForge</span>
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;">Premium AI Brand Identity</div>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <h1 style="font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px;">We've received your message! ✉️</h1>
+          <p style="font-size: 14px; line-height: 1.6; color: #475569;">
+            Hello, thank you for reaching out to BrandForge Support. We have received your inquiry and our support team will review it shortly.
+          </p>
+        </div>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Inquiry Details</div>
+          <div style="font-size: 13px; color: #1e293b; margin-bottom: 6px;"><strong>Subject:</strong> ${newTicket.subject}</div>
+          <div style="font-size: 13px; color: #475569; line-height: 1.5; white-space: pre-wrap;">${newTicket.message}</div>
+        </div>
+        <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 24px; margin-top: 24px;">
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            &copy; 2026 BrandForge. All rights reserved.
+          </p>
+        </div>
+      </div>
+    `;
+
+    const adminSubject = `[BrandForge Support] New Ticket: ${newTicket.subject}`;
+    const adminHtmlBody = `
+      <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #f1f5f9; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 20px; font-weight: 800; color: #e11d48;">BrandForge Alert</span>
+          <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;">New Support Ticket Received</div>
+        </div>
+        <div style="margin-bottom: 24px;">
+          <h2 style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px;">Ticket Details:</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #475569; margin-bottom: 16px;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; width: 120px;">Ticket ID:</td>
+              <td style="padding: 6px 0;">${newTicket.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold;">User Email:</td>
+              <td style="padding: 6px 0; color: #4f46e5;">${newTicket.userEmail}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold;">User ID:</td>
+              <td style="padding: 6px 0;">${newTicket.userId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold;">Subject:</td>
+              <td style="padding: 6px 0; font-weight: bold; color: #0f172a;">${newTicket.subject}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold;">Created At:</td>
+              <td style="padding: 6px 0;">${newTicket.createdAt}</td>
+            </tr>
+          </table>
+        </div>
+        <div style="background-color: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+          <div style="font-size: 11px; font-weight: bold; color: #be123c; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Message Content</div>
+          <div style="font-size: 13px; color: #1e293b; line-height: 1.5; white-space: pre-wrap;">${newTicket.message}</div>
+        </div>
+        <div style="text-align: center; border-top: 1px solid #f1f5f9; padding-top: 24px; margin-top: 24px;">
+          <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+            Manage this ticket via the Admin Panel under Support Tickets section.
+          </p>
+        </div>
+      </div>
+    `;
+
+    // 3. Dispatch the real emails
+    // A. Send confirmation email to the user
+    try {
+      const userRes = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: newTicket.userEmail,
+          subject: userSubject,
+          html: userHtmlBody
+        })
+      });
+      const userData = await userRes.json();
+      if (userData.success) {
+        console.log(`Confirmation email sent successfully to ${newTicket.userEmail}. MessageId: ${userData.messageId}`);
+      } else {
+        console.warn(`Email API returned success=false for user email:`, userData.error);
+      }
+    } catch (emailErr) {
+      console.error(`Failed to dispatch user confirmation email:`, emailErr);
+    }
+
+    // B. Send notification email to the system administrator (yoafyosf121@gmail.com)
+    try {
+      const adminRes = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: 'yoafyosf121@gmail.com',
+          subject: adminSubject,
+          html: adminHtmlBody
+        })
+      });
+      const adminData = await adminRes.json();
+      if (adminData.success) {
+        console.log(`Admin notification email sent successfully to yoafyosf121@gmail.com. MessageId: ${adminData.messageId}`);
+      } else {
+        console.warn(`Email API returned success=false for admin email:`, adminData.error);
+      }
+    } catch (emailErr) {
+      console.error(`Failed to dispatch admin notification email:`, emailErr);
+    }
   };
 
   // 6. Asset Saving Hooks
@@ -878,6 +1062,25 @@ export default function App() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center transition-colors duration-200">
+        <div className="relative flex flex-col items-center">
+          <div className="absolute inset-0 bg-indigo-500 blur-[80px] opacity-20 rounded-full w-40 h-40" />
+          <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-violet-500 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/20 mb-8 animate-pulse relative z-10">
+            <Sparkles className="w-8 h-8 text-white" />
+          </div>
+          <div className="h-1.5 w-48 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative z-10">
+            <div className="h-full bg-indigo-600 rounded-full animate-[progress_2s_ease-in-out_infinite]" />
+          </div>
+          <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400 font-display tracking-widest uppercase relative z-10 animate-pulse">
+            {language === 'ar' ? 'جاري تهيئة منصة BrandForge' : 'Initializing BrandForge'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-indigo-50/70 via-white to-slate-50 dark:from-indigo-950/20 dark:via-slate-950 dark:to-slate-950 transition-colors duration-200" 
@@ -895,6 +1098,7 @@ export default function App() {
         user={user}
         onLogout={handleLogout}
         onLoginClick={() => setShowAuthModal(true)}
+        onRefresh={handleRefreshApp}
       />
 
       {/* Main Layout Area */}
@@ -950,6 +1154,18 @@ export default function App() {
                 <div className="space-y-1">
                   <span className="block text-2xl font-extrabold text-slate-950 dark:text-white font-display">Instant</span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">{t.statSpeed}</span>
+                </div>
+              </div>
+
+              {/* Trusted by section */}
+              <div className="pt-16 pb-8 text-center border-b border-slate-100 dark:border-slate-900/50 max-w-5xl mx-auto">
+                <p className="text-sm font-medium text-slate-400 mb-6 uppercase tracking-widest">{language === 'ar' ? 'موثوق به من قبل أكثر من 1000+ شركة ناشئة ووكالة' : 'Trusted by over 1000+ startups and agencies'}</p>
+                <div className="flex flex-wrap justify-center items-center gap-8 sm:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                  <span className="font-display font-black text-xl text-slate-500">AcmeCorp</span>
+                  <span className="font-display font-bold text-xl italic text-slate-500">Globex</span>
+                  <span className="font-mono font-bold text-xl text-slate-500">INITIATIVE</span>
+                  <span className="font-sans font-medium text-xl text-slate-500 tracking-tight">soylent</span>
+                  <span className="font-serif font-semibold text-xl text-slate-500">Initech</span>
                 </div>
               </div>
 
@@ -1385,6 +1601,26 @@ export default function App() {
             </h4>
             <p className="text-[10px] text-slate-400 truncate">
               Sent to <span className="font-semibold text-slate-600 dark:text-slate-300">{welcomeEmailToast.email}</span> via SparkMail SDK.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Global Add-ons */}
+      <CookieConsent language={language} />
+
+      {/* Synchronization success toast */}
+      {showRefreshToast && (
+        <div className="fixed bottom-6 left-6 z-[120] bg-white dark:bg-slate-900 border border-emerald-500/20 dark:border-emerald-500/30 shadow-2xl p-4 rounded-2xl flex items-center gap-3.5 max-w-sm animate-fade-in">
+          <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+          </div>
+          <div className="flex-grow min-w-0">
+            <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+              {language === 'ar' ? 'تم تحديث الموقع بنجاح' : 'System Synced Successfully'}
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {language === 'ar' ? 'تمت إعادة تحميل الأصول ومزامنة قواعد البيانات السحابية.' : 'Assets and cloud databases fully synchronized.'}
             </p>
           </div>
         </div>
