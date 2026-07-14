@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Language, Page, BlogArticle, SupportTicket } from '../types';
-import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download } from 'lucide-react';
+import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download, RefreshCw, X, Lock } from 'lucide-react';
 import CheckoutModal from './CheckoutModal';
 
 interface BlogFAQPagesProps {
   language: Language;
   page: Page;
   setCurrentPage: (page: Page) => void;
-  onSubmitTicket: (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => void;
+  onSubmitTicket: (ticket: Omit<SupportTicket, 'id' | 'createdAt' | 'status'>) => Promise<{ success: boolean; emailSuccess: boolean; error?: string }>;
   userEmail?: string;
   userUid?: string;
   onAddCredits?: (amount: number) => void;
@@ -32,6 +32,9 @@ export default function BlogFAQPages({
   const [message, setMessage] = useState('');
   const [contactEmail, setContactEmail] = useState(userEmail || '');
   const [ticketSuccess, setTicketSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [emailWarning, setEmailWarning] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
   const [checkoutModal, setCheckoutModal] = useState<{
     isOpen: boolean;
@@ -89,21 +92,39 @@ export default function BlogFAQPages({
     }
   ];
 
-  const handleTicketSubmit = (e: React.FormEvent) => {
+  const handleTicketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim() || !contactEmail.trim()) return;
 
-    onSubmitTicket({
-      userId: userUid || 'guest',
-      userEmail: contactEmail,
-      subject,
-      message,
-    });
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setEmailWarning(false);
+    setTicketSuccess(false);
 
-    setSubject('');
-    setMessage('');
-    setTicketSuccess(true);
-    setTimeout(() => setTicketSuccess(false), 4000);
+    try {
+      const res = await onSubmitTicket({
+        userId: userUid || 'guest',
+        userEmail: contactEmail,
+        subject,
+        message,
+      });
+
+      if (res.success) {
+        setSubject('');
+        setMessage('');
+        setTicketSuccess(true);
+        if (!res.emailSuccess) {
+          setEmailWarning(true);
+          setSubmitError(res.error || null);
+        }
+      } else {
+        setSubmitError(res.error || 'Firestore write failed');
+      }
+    } catch (err: any) {
+      setSubmitError(err.message || 'Submission error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (page === 'features') {
@@ -385,68 +406,173 @@ export default function BlogFAQPages({
   }
 
   if (page === 'contact') {
+    const isAr = language === 'ar';
+    const isGuest = !userUid || userUid === 'guest';
+
     return (
-      <div className="space-y-12 animate-fade-in py-8 max-w-xl mx-auto">
+      <div className="space-y-12 animate-fade-in py-8 max-w-xl mx-auto" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="text-center space-y-4">
           <h2 className="text-3xl font-display font-bold text-slate-900 dark:text-white">
-            Contact BrandForge Support
+            {isAr ? 'اتصل بالدعم الفني لـ BrandForge' : 'Contact BrandForge Support'}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Submit a support ticket and our engineering team will get back to you within 24 hours. Your tickets immediately route to our integrated Admin panel!
+            {isAr 
+              ? 'أرسل تذكرة دعم وسيتولى مهندسونا مراجعتها والرد عليك خلال 24 ساعة. يتم تسجيل تذكرتك فوراً في قاعدة بيانات Firestore السحابية.' 
+              : 'Submit a support ticket and our engineering team will get back to you within 24 hours. Your tickets immediately route to our cloud Firestore database and Admin panel.'}
           </p>
         </div>
 
-        <form onSubmit={handleTicketSubmit} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Your Email</label>
-            <input
-              type="email"
-              required
-              value={contactEmail}
-              onChange={(e) => setContactEmail(e.target.value)}
-              placeholder="e.g. email@domain.com"
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subject</label>
-            <input
-              type="text"
-              required
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g. Credit adjustment inquiry"
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Message Description</label>
-            <textarea
-              required
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Detailed explanation of your request..."
-              rows={4}
-              className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 focus:border-indigo-500 focus:outline-none transition-all"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer"
-          >
-            Submit Ticket
-          </button>
-
-          {ticketSuccess && (
-            <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 rounded-xl text-xs font-medium mt-2">
-              <Check className="w-4 h-4" />
-              <span>Ticket submitted successfully! Check our simulated Admin Dashboard to resolve this ticket.</span>
+        {isGuest ? (
+          <div className="bg-white dark:bg-slate-900 border border-amber-200/50 dark:border-amber-500/30 p-8 rounded-3xl shadow-sm text-center space-y-6">
+            <div className="w-16 h-16 bg-amber-50 dark:bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+              <Lock className="w-7 h-7" />
             </div>
-          )}
-        </form>
+            <div className="space-y-2">
+              <h3 className="text-lg font-display font-bold text-slate-900 dark:text-white">
+                {isAr ? 'يجب تسجيل الدخول أولاً للمراسلة' : 'Authentication Required'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+                {isAr
+                  ? 'لحماية المنصة وضمان وصول الردود والرسائل إلى بريدك الإلكتروني بشكل موثوق، يُرجى تسجيل الدخول أو إنشاء حساب جديد أولاً قبل إرسال الرسالة.'
+                  : 'To secure the platform and ensure responses reach your email address reliably, please log in or create an account first before contacting support.'}
+              </p>
+            </div>
+            <button
+              onClick={onOpenLogin}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-indigo-500/20"
+            >
+              {isAr ? 'تسجيل الدخول / إنشاء حساب جديد' : 'Log In / Sign Up'}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleTicketSubmit} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                {isAr ? 'بريدك الإلكتروني (للمراسلة والرد)' : 'Your Email'}
+              </label>
+              <input
+                type="email"
+                required
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="e.g. email@domain.com"
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all text-left"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                {isAr ? 'عنوان الرسالة / الموضوع' : 'Subject'}
+              </label>
+              <input
+                type="text"
+                required
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder={isAr ? 'مثال: مشكلة في تحميل الشعار الشفاف' : 'e.g. Credit adjustment inquiry'}
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                {isAr ? 'تفاصيل الرسالة أو المشكلة بالتفصيل' : 'Message Description'}
+              </label>
+              <textarea
+                required
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder={isAr ? 'اكتب رسالتك أو استفسارك هنا بالتفصيل...' : 'Detailed explanation of your request...'}
+                rows={4}
+                className="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>{isAr ? 'جاري إرسال الرسالة والتحقق...' : 'Sending Message & Verifying...'}</span>
+                </>
+              ) : (
+                <span>{isAr ? 'إرسال التذكرة والمراسلة' : 'Submit Ticket'}</span>
+              )}
+            </button>
+
+            {ticketSuccess && (
+              <div className="space-y-2 mt-2">
+                <div className="flex items-start gap-2.5 p-3.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl text-xs">
+                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-bold">
+                      {isAr ? 'تم إرسال التذكرة وحفظها بنجاح! 🎉' : 'Ticket submitted and saved successfully! 🎉'}
+                    </p>
+                    <p className="text-[11px] opacity-90 mt-0.5">
+                      {isAr 
+                        ? 'تم تسجيل تذكرتك بنجاح في قاعدة بيانات Cloud Firestore السحابية. يمكنك رؤيتها والتحكم بحالتها مباشرة من لوحة تحكم الأدمن (Admin Panel).' 
+                        : 'Your support ticket has been recorded in the Firestore cloud database. You can manage and resolve it inside the Admin Dashboard.'}
+                    </p>
+                  </div>
+                </div>
+
+                {!emailWarning && (
+                  <div className="flex items-start gap-2.5 p-3 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30 rounded-2xl text-xs">
+                    <Mail className="w-4 h-4 mt-0.5 shrink-0 animate-pulse text-indigo-500" />
+                    <div>
+                      <p className="font-bold">
+                        {isAr ? 'تم إرسال البريد التأكيدي بنجاح ✉️' : 'Emails Dispatched successfully ✉️'}
+                      </p>
+                      <p className="text-[11px] opacity-95 mt-0.5">
+                        {isAr 
+                          ? 'تم إرسال بريد إلكتروني تأكيدي إليك، وبريد إشعار آخر لمدير النظام لتنبيهه. 💡 يرجى تفقد صندوق البريد العشوائي (Spam/Junk) إذا لم تجد الرسالة في صندوق الوارد الرئيسي.' 
+                          : 'A confirmation email was dispatched to your inbox, and an alert email was sent to the system administrator. 💡 Please check your Spam/Junk folder if you do not see it in your primary inbox.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {ticketSuccess && emailWarning && (
+              <div className="flex items-start gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-xs mt-2">
+                <Mail className="w-4 h-4 mt-0.5 shrink-0 animate-pulse text-amber-500" />
+                <div>
+                  <p className="font-bold">
+                    {isAr ? 'تنبيه: تعذر إرسال البريد الإلكتروني الحقيقي' : 'Notice: Real email could not be delivered'}
+                  </p>
+                  <p className="text-[11px] opacity-90 mt-0.5">
+                    {isAr 
+                      ? `التذكرة حُفظت بنجاح في لوحة الأدمن، ولكن خادم البريد (SMTP) رفض الإرسال. السبب: (${submitError || 'خطأ غير معروف في خادم SMTP'}).` 
+                      : `Ticket saved to Admin Panel, but real SMTP dispatch failed. Reason: (${submitError || 'SMTP rejection'}).`}
+                  </p>
+                  <p className="text-[11px] font-medium mt-1">
+                    {isAr 
+                      ? '💡 لحل هذه المشكلة: تأكد من إضافة بيانات خادم الـ SMTP الخاص بك بشكل صحيح كمتغيرات بيئية (Environment Variables) في لوحة تحكم Render أو الاستضافة الخاصة بك.' 
+                      : '💡 To fix this: Make sure your own custom SMTP credentials (SMTP_USER, SMTP_PASS, SMTP_HOST) are set as Environment Variables in Render or your hosting provider.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {!ticketSuccess && submitError && (
+              <div className="flex items-start gap-2.5 p-3.5 bg-rose-50 dark:bg-rose-950/20 text-rose-800 dark:text-rose-400 border border-rose-100 dark:border-rose-900/30 rounded-2xl text-xs mt-2">
+                <X className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                <div>
+                  <p className="font-bold">
+                    {isAr ? 'فشل الإرسال بالكامل' : 'Submission failed completely'}
+                  </p>
+                  <p className="text-[11px] opacity-90 mt-0.5">
+                    {isAr ? `تعذر معالجة طلبك وحفظه. تفاصيل الخطأ: ${submitError}` : `Error details: ${submitError}`}
+                  </p>
+                </div>
+              </div>
+            )}
+          </form>
+        )}
       </div>
     );
   }

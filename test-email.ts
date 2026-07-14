@@ -14,9 +14,9 @@ async function test() {
   try {
     const info = await transporter.sendMail({
       from: '"BrandForge AI" <brandforge-ai@zohomail.com>',
-      to: 'brandforge-ai@zohomail.com',
-      subject: 'Test Cloud Run',
-      html: 'Works!'
+      to: 'yoafyosf121@gmail.com',
+      subject: 'Test BrandForge Delivery Check',
+      html: '<h1>Delivery Verification</h1><p>Testing real delivery to your email inbox.</p>'
     });
     console.log("Success:", info.messageId);
   } catch (e) {

@@ -674,12 +674,18 @@ export default function App() {
     setSupportTickets(updated);
     localStorage.setItem('brandforge_tickets', JSON.stringify(updated));
 
+    let firestoreSuccess = false;
+    let emailSuccess = false;
+    let emailErrorMsg = '';
+
     // 1. Real persistence: write to the shared Firestore database
     try {
       await setDoc(doc(db, 'support_tickets', newTicket.id), newTicket);
       console.log(`Support ticket ${newTicket.id} saved to Firestore successfully!`);
-    } catch (err) {
+      firestoreSuccess = true;
+    } catch (err: any) {
       console.error("Error saving support ticket to Firestore:", err);
+      emailErrorMsg = err.message || 'Firestore Write Error';
     }
 
     // 2. Build email templates
@@ -794,11 +800,14 @@ export default function App() {
       const userData = await userRes.json();
       if (userData.success) {
         console.log(`Confirmation email sent successfully to ${newTicket.userEmail}. MessageId: ${userData.messageId}`);
+        emailSuccess = true;
       } else {
         console.warn(`Email API returned success=false for user email:`, userData.error);
+        emailErrorMsg = userData.error || 'SMTP Error';
       }
-    } catch (emailErr) {
+    } catch (emailErr: any) {
       console.error(`Failed to dispatch user confirmation email:`, emailErr);
+      emailErrorMsg = emailErr.message || 'SMTP Network Error';
     }
 
     // B. Send notification email to the system administrator (yoafyosf121@gmail.com)
@@ -821,6 +830,8 @@ export default function App() {
     } catch (emailErr) {
       console.error(`Failed to dispatch admin notification email:`, emailErr);
     }
+
+    return { success: firestoreSuccess, emailSuccess, error: emailErrorMsg };
   };
 
   // 6. Asset Saving Hooks
