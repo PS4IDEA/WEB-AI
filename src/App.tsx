@@ -74,6 +74,13 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
   const [isRegister, setIsRegister] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authDomainErrorDetails, setAuthDomainErrorDetails] = useState(false);
+
+  useEffect(() => {
+    setAuthError(null);
+    setAuthDomainErrorDetails(false);
+  }, [showAuthModal, isRegister]);
 
   // Core databases (using local state + localStorage fallback)
   const [usersDb, setUsersDb] = useState<UserProfile[]>([]);
@@ -410,19 +417,34 @@ export default function App() {
 
   // 3. Simulated & Real Firebase Auth Handlers
   const handleGoogleLogin = async () => {
+    setAuthError(null);
+    setAuthDomainErrorDetails(false);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       setShowAuthModal(false);
     } catch (err: any) {
       console.error("Google Auth error:", err);
-      alert(err.message || "Google authentication error occurred. Please try again.");
+      const isDomainError = err.code === 'auth/unauthorized-domain' || 
+                            (err.message && err.message.includes('unauthorized-domain'));
+      if (isDomainError) {
+        setAuthDomainErrorDetails(true);
+        setAuthError(
+          language === 'ar' 
+            ? 'هذا النطاق غير مصرح به في إعدادات مشروع Firebase الخاص بك.'
+            : 'This domain is not authorized in your Firebase Project settings.'
+        );
+      } else {
+        setAuthError(err.message || (language === 'ar' ? 'حدث خطأ في مصادقة Google. الرجاء المحاولة مرة أخرى.' : 'Google authentication error occurred. Please try again.'));
+      }
     }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail.trim() || !authPassword.trim()) return;
+    setAuthError(null);
+    setAuthDomainErrorDetails(false);
 
     try {
       if (isRegister) {
@@ -452,7 +474,18 @@ export default function App() {
       setAuthName('');
     } catch (err: any) {
       console.error("Auth error:", err);
-      alert(err.message || "Authentication error occurred. Please try again.");
+      const isDomainError = err.code === 'auth/unauthorized-domain' || 
+                            (err.message && err.message.includes('unauthorized-domain'));
+      if (isDomainError) {
+        setAuthDomainErrorDetails(true);
+        setAuthError(
+          language === 'ar' 
+            ? 'هذا النطاق غير مصرح به في إعدادات مشروع Firebase الخاص بك.'
+            : 'This domain is not authorized in your Firebase Project settings.'
+        );
+      } else {
+        setAuthError(err.message || (language === 'ar' ? 'حدث خطأ أثناء تسجيل الدخول. الرجاء المحاولة مرة أخرى.' : 'Authentication error occurred. Please try again.'));
+      }
     }
   };
 
@@ -1399,6 +1432,46 @@ export default function App() {
               <span>{language === 'ar' ? 'تسجيل الدخول باستخدام Google' : 'Sign in with Google'}</span>
             </button>
 
+            {authError && (
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 rounded-2xl text-left space-y-3 animate-fade-in">
+                <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-start gap-1.5">
+                  <span>⚠️</span>
+                  <span>{authError}</span>
+                </p>
+                {authDomainErrorDetails && (
+                  <div className="text-[11px] text-slate-600 dark:text-slate-350 space-y-2 border-t border-rose-100 dark:border-rose-900/40 pt-2 leading-relaxed">
+                    {language === 'ar' ? (
+                      <>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">لحل هذه المشكلة في أقل من دقيقة:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400">
+                          <li>اذهب إلى <a href="https://console.firebase.google.com/project/brandforge-ai-c0449/authentication/providers" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">لوحة تحكم Firebase لمشروعك</a>.</li>
+                          <li>تحت قسم <b>Authorized domains</b>، اضغط على <b>Add domain</b>.</li>
+                          <li>أدخل اسم النطاق التالي بدقة:</li>
+                        </ol>
+                        <div className="bg-slate-100 dark:bg-slate-950 p-2 rounded-lg font-mono text-center font-bold text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 select-all">
+                          {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">ثم أعد تحميل الصفحة وحاول مجدداً!</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold text-slate-700 dark:text-slate-200">To resolve this error in less than a minute:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400">
+                          <li>Go to your <a href="https://console.firebase.google.com/project/brandforge-ai-c0449/authentication/providers" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console Auth Settings</a>.</li>
+                          <li>Scroll to <b>Authorized domains</b> and click <b>Add domain</b>.</li>
+                          <li>Enter this exact domain name:</li>
+                        </ol>
+                        <div className="bg-slate-100 dark:bg-slate-950 p-2 rounded-lg font-mono text-center font-bold text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 select-all">
+                          {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">Then reload this page and try again!</p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center my-4">
               <div className="flex-grow border-t border-slate-100 dark:border-slate-800"></div>
               <span className="px-3 text-[10px] text-slate-400 uppercase font-semibold tracking-widest">
@@ -1463,150 +1536,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Custom Firebase Setup Panel for Self-Hosting (Hostinger/GitHub) */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowFirebaseSettings(!showFirebaseSettings)}
-                className="w-full flex items-center justify-between text-xs font-semibold text-slate-500 hover:text-indigo-600 transition"
-              >
-                <span>
-                  {language === 'ar' 
-                    ? '⚙️ إعدادات قاعدة بيانات Firebase المخصصة' 
-                    : '⚙️ Custom Firebase Project Settings'}
-                </span>
-                <span>{showFirebaseSettings ? '▲' : '▼'}</span>
-              </button>
 
-              {showFirebaseSettings && (
-                <div className="mt-3 space-y-3 bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 text-left animate-fade-in">
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    {language === 'ar'
-                      ? 'إذا قمت برفع التطبيق على Hostinger أو GitHub وتريد ربطه بقاعدة بيانات Firebase الخاصة بك، قم بلصق كائن تهيئة الويب الخاص بـ Firebase (Web Configuration SDK Object) أدناه:'
-                      : 'If you self-host this app on Hostinger or GitHub, paste your Firebase SDK Configuration JSON here to sync your custom database:'}
-                  </p>
-
-                  <textarea
-                    rows={6}
-                    value={customFirebaseInput}
-                    onChange={(e) => {
-                      setCustomFirebaseInput(e.target.value);
-                      setFirebaseSaveStatus('idle');
-                    }}
-                    placeholder={`{
-  "apiKey": "AIzaSy...",
-  "authDomain": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}`}
-                    className="w-full p-3 font-mono text-[11px] rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100"
-                  />
-
-                  {firebaseSaveStatus === 'saved' && (
-                    <div className="p-2 text-[11px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 rounded-lg">
-                      {language === 'ar'
-                        ? '✓ تم حفظ الإعدادات! سيتم إعادة تحميل الصفحة لتطبيق التغييرات...'
-                        : '✓ Settings saved! Reloading to apply changes...'}
-                    </div>
-                  )}
-
-                  {firebaseSaveStatus === 'cleared' && (
-                    <div className="p-2 text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 rounded-lg">
-                      {language === 'ar'
-                        ? '✓ تم حذف الإعدادات المخصصة والرجوع للافتراضي. سيتم إعادة تحميل الصفحة...'
-                        : '✓ Custom configuration cleared. Reloading to apply defaults...'}
-                    </div>
-                  )}
-
-                  {firebaseSaveStatus === 'error' && (
-                    <div className="p-2 text-[11px] bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 rounded-lg">
-                      {firebaseErrorMsg}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          // Try parsing as JSON
-                          let parsed;
-                          try {
-                            parsed = JSON.parse(customFirebaseInput);
-                          } catch (jsonErr) {
-                            // If direct parse fails, try extracting JSON from JS object format
-                            const cleaned = customFirebaseInput
-                              .replace(/([a-zA-Z0-9]+)\s*:/g, '"$1":') // add quotes to unquoted keys
-                              .replace(/'/g, '"') // replace single quotes with double quotes
-                              .replace(/,\s*}/g, '}') // clean trailing commas
-                              .replace(/const\s+firebaseConfig\s*=\s*/g, '')
-                              .replace(/;/g, '');
-                            parsed = JSON.parse(cleaned);
-                          }
-
-                          if (!parsed.apiKey || !parsed.projectId) {
-                            throw new Error(language === 'ar' ? 'تنسيق غير صالح. يرجى إدخال apiKey و projectId على الأقل.' : 'Invalid format. Must include at least apiKey and projectId.');
-                          }
-
-                          setClientFirebaseConfig(parsed);
-                          setFirebaseSaveStatus('saved');
-                          setTimeout(() => {
-                            window.location.reload();
-                          }, 1500);
-                        } catch (err: any) {
-                          setFirebaseSaveStatus('error');
-                          setFirebaseErrorMsg(language === 'ar' 
-                            ? 'خطأ في التنسيق: تأكد من كتابة كود JSON صحيح يحتوي على الأقل على apiKey و projectId.'
-                            : `Format error: ${err.message || 'Make sure it is a valid JSON object.'}`);
-                        }
-                      }}
-                      className="flex-1 py-2 text-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-bold cursor-pointer transition"
-                    >
-                      {language === 'ar' ? 'حفظ وإعادة تشغيل' : 'Save & Reload'}
-                    </button>
-
-                    {isClientFirebaseActive() && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setClientFirebaseConfig(null);
-                          setFirebaseSaveStatus('cleared');
-                          setTimeout(() => {
-                            window.location.reload();
-                          }, 1500);
-                        }}
-                        className="py-2 px-3 text-center bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-[11px] font-bold cursor-pointer transition"
-                      >
-                        {language === 'ar' ? 'حذف الإعدادات' : 'Clear Config'}
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 space-y-1 leading-relaxed">
-                    <span className="font-semibold block text-slate-500">
-                      {language === 'ar' ? 'خطوات هامة في لوحة تحكم Firebase:' : 'Important steps in Firebase Console:'}
-                    </span>
-                    <ol className="list-decimal list-inside space-y-0.5">
-                      {language === 'ar' ? (
-                        <>
-                          <li>تفعيل <b>Email/Password</b> في تبويب Authentication.</li>
-                          <li>إضافة نطاق موقعك (مثل Hostinger أو github.io) إلى <b>Authorized Domains</b> في إعدادات Authentication.</li>
-                          <li>تفعيل <b>Cloud Firestore</b> في وضع الإنتاج أو التجربة.</li>
-                        </>
-                      ) : (
-                        <>
-                          <li>Enable <b>Email/Password</b> sign-in provider under Authentication.</li>
-                          <li>Add your domain (e.g. github.io or your domain) to <b>Authorized Domains</b> under Authentication Settings.</li>
-                          <li>Create a <b>Cloud Firestore</b> database.</li>
-                        </>
-                      )}
-                    </ol>
-                  </div>
-                </div>
-              )}
-            </div>
 
           </div>
         </div>

@@ -3,6 +3,7 @@ import { translations } from '../translations';
 import { Language, UserProfile, GeneratedLogo } from '../types';
 import { Sparkles, Download, Bookmark, Copy, Check, FileCode, AlertTriangle, RefreshCw, X, Maximize2, Share2 } from 'lucide-react';
 import { fetchAPI } from '../lib/api';
+import { motion } from 'motion/react';
 
 interface LogoGeneratorProps {
   language: Language;
@@ -269,10 +270,13 @@ export default function LogoGenerator({
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {logoStyles.map((style) => (
-                <button
+                <motion.button
                   key={style.id}
                   onClick={() => setSelectedStyle(style.id)}
-                  className={`p-4 rounded-2xl border text-left flex flex-col justify-between h-28 transition-all cursor-pointer relative overflow-hidden ${
+                  whileHover={{ scale: 1.03, translateY: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  className={`p-4 rounded-2xl border text-left flex flex-col justify-between h-28 cursor-pointer relative overflow-hidden transition-colors duration-200 ${
                     selectedStyle === style.id
                       ? 'border-indigo-600 bg-indigo-50/20 dark:border-indigo-500 dark:bg-indigo-950/10 shadow-lg shadow-indigo-100 dark:shadow-none'
                       : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-950'
@@ -287,7 +291,7 @@ export default function LogoGenerator({
                       {style.desc}
                     </span>
                   </div>
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
@@ -383,10 +387,19 @@ export default function LogoGenerator({
 
       {/* Results Display */}
       {logoResult && !loading && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 25, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="grid grid-cols-1 md:grid-cols-12 gap-8"
+        >
           
           {/* Logo Canvas Frame */}
-          <div className="md:col-span-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center shadow-lg">
+          <motion.div 
+            whileHover={{ scale: 1.025 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            className="md:col-span-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center shadow-lg"
+          >
             <div 
               onClick={() => setIsPreviewOpen(true)}
               className="w-full aspect-square bg-slate-50 dark:bg-slate-950 rounded-2xl flex items-center justify-center p-6 border border-slate-100 dark:border-slate-800 relative shadow-inner overflow-hidden cursor-zoom-in group/logo transition-all duration-300 hover:shadow-md dark:hover:shadow-none hover:border-slate-200 dark:hover:border-slate-700"
@@ -420,7 +433,7 @@ export default function LogoGenerator({
                 {language === 'ar' ? 'الثانوي' : 'Secondary'}: {logoResult.secondaryColor}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Details & Actions Panel */}
           <div className="md:col-span-7 space-y-6">
@@ -500,7 +513,7 @@ export default function LogoGenerator({
             </div>
           </div>
 
-        </div>
+        </motion.div>
       )}
 
       {/* Full-Screen Preview Modal */}
