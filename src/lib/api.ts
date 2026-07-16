@@ -210,7 +210,8 @@ async function runClientSideGemini(url: string, body: any): Promise<any> {
     const { prompt, industry, country, style, language } = body;
     const systemPrompt = `You are a world-class brand naming specialist, linguist, and startup identity consultant. 
 Your task is to generate 8-10 extremely professional, clever, modern, and highly memorable brand name ideas based on the user's requirements. 
-Perform deep contextual reasoning to construct names that stand out, have great phonetics, and convey strong brand identity.
+Perform deep contextual reasoning to construct names that stand out, have great phonetics, and convey strong brand identity. 
+Ensure the names are highly innovative, marketable, and not generic. Use creative techniques like portmanteaus, linguistic twists, evocative real words, or abstract concepts that perfectly capture the essence of the brand.
 
 Requirements:
 - User Prompt / Concept: ${prompt || "Innovative startup"}
@@ -241,14 +242,14 @@ Do not include any markdown markdown block wrappers like \`\`\`json. Return pure
   if (url.endsWith('/api/generate-logo')) {
     const { prompt, style } = body;
     const systemPrompt = `You are a world-class vector graphic designer and branding typographer specializing in minimalist, responsive, iconic, and high-impact logo designs.
-Generate an exceptional and creative brand logo in valid SVG format representing the concept: "${prompt}".
+Generate an exceptional, premium, and breathtaking brand logo in valid SVG format representing the concept: "${prompt}".
 Style requested: ${style || "minimalist"} (can be minimalist, luxury, modern, gaming, technology, corporate, creative, threeD).
 
 Requirements for the SVG:
 - Output must be a strictly valid XML/SVG element.
 - The viewBox MUST be "0 0 500 500".
-- It should look incredibly professional, modern, balanced, and high-end. No generic placeholders.
-- Use gorgeous gradients or rich contrasting colors. Include proper linearGradient or radialGradient definitions inside a <defs> block to add depth and quality.
+- The design must be incredibly professional, visually striking, balanced, and high-end. Avoid generic clipart shapes. Think like a top-tier design agency.
+- Use gorgeous gradients, rich contrasting colors, or elegant monochrome based on the style. Include proper linearGradient or radialGradient definitions inside a <defs> block to add depth and professional quality.
 - Incorporate a distinct icon or brand symbol at the center, and optionally the brand name styled beautifully below it or integrated.
 - Ensure the background is either transparent or has a stylish subtle dark/light container shape.
 - If style is "luxury", use elegant gold/bronze gradients (#D4AF37, #FFDF00, #996515), dark deep blue or black accents.
@@ -284,7 +285,8 @@ Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
     const systemPrompt = `You are an award-winning advertising creative director and master copywriter.
 Generate 10 distinct, highly catchy, emotionally resonant, and memorable brand slogans/taglines for: "${prompt}".
 Slogan length target: ${length || "short"} (can be short or long).
-Output language: ${language || "en"}. If "ar", the slogans must be elegantly written in eloquent, native Arabic.
+Output language: ${language || "en"}. If "ar", the slogans must be elegantly written in eloquent, native, and highly persuasive Arabic.
+Ensure the slogans are punchy, original, and deeply connect with the target audience's aspirations. Avoid clichés.
 
 Return a JSON array of objects strictly matching this structure:
 [
@@ -304,8 +306,9 @@ Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
 
   if (url.endsWith('/api/generate-brand-kit')) {
     const { name, prompt, language } = body;
-    const systemPrompt = `You are a premium branding agency director and creative strategist. Create a comprehensive brand kit and identity guidelines for the business name "${name}" based on this description: "${prompt}".
+    const systemPrompt = `You are a premium branding agency director and creative strategist. Create a comprehensive, top-tier brand kit and identity guidelines for the business name "${name}" based on this description: "${prompt}".
 Output language must be: ${language || "en"}. If "ar", values must be translated to professional branding Arabic.
+Provide deeply considered color combinations and typography pairings that reflect modern luxury, tech-forwardness, or the exact vibe requested.
 
 Generate and return a JSON object matching this structure:
 {
@@ -347,7 +350,7 @@ Requirements:
 - Stylistic direction: ${style || "Standard"} (Pastel, Vintage, Neon, Deep/Warm, Cold/Nordic, Corporate, Minimalist, Vibrant)
 - Output Language: ${language || "en"}
 
-Generate 5 distinct HEX color codes that fit perfectly together as a high-quality brand palette. Name each color beautifully (e.g. "Vintage Ochre", "Electric Mint") and describe its psychological effect or usage role in a brand (e.g., Primary branding element, Canvas bg, Accent call-to-action).
+Generate 5 distinct HEX color codes that fit perfectly together as a high-quality, aesthetically stunning brand palette. Name each color beautifully (e.g. "Vintage Ochre", "Electric Mint") and deeply describe its psychological effect or usage role in a brand UI (e.g., Primary branding element, Canvas bg, Accent call-to-action).
 
 You MUST respond with a JSON object strictly matching this structure:
 {

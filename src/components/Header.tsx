@@ -111,17 +111,6 @@ export default function Header({
                 </span>
               </div>
             )}
-            {geminiStatus === 'quota_warning' && (
-              <div 
-                className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-500/20 ml-1.5"
-                title={language === 'ar' ? "مفتاح API الخاص بك صحيح، ولكن تم تجاوز حد الاستخدام المجاني لليوم. يرجى تكرار المحاولة لاحقاً أو إدخال مفتاح مدفوع." : "Your API key is valid, but the free tier quota is exhausted. Please try again later or add a paid key."}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                <span>
-                  {language === 'ar' ? "انتهى رصيد الاستخدام المجاني" : "Quota Exceeded"}
-                </span>
-              </div>
-            )}
             {geminiStatus === 'checking' && (
               <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-medium ml-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
