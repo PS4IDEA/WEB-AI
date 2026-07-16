@@ -45,9 +45,8 @@ export default function NameGenerator({
     setError(null);
     setLoading(true);
 
-    // Cost: 2 credits
-    const success = onDeductCredits(2);
-    if (!success) {
+    const userCredits = user && typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
+    if (userCredits < 2) {
       setError(language === 'en' ? 'Insufficient credits! Please upgrade your plan or purchase credits.' : 'رصيدك غير كافٍ! يرجى ترقية باقتك أو شراء رصيد إضافي.');
       setLoading(false);
       return;
@@ -66,6 +65,7 @@ export default function NameGenerator({
       });
 
       if (resJson.success) {
+        onDeductCredits(2);
         setResults(resJson.data);
       } else {
         throw new Error(resJson.error || 'Failed to generate names');
@@ -226,9 +226,18 @@ export default function NameGenerator({
 
       {/* Error Alert */}
       {error && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-400 text-sm">
-          <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <p>{error}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 text-rose-800 dark:text-rose-400 text-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <p>{error}</p>
+          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="flex items-center justify-center gap-1.5 self-start sm:self-center bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-xs px-4 py-2 rounded-xl transition duration-150 cursor-pointer shadow-md shrink-0"
+          >
+            <span>{language === 'ar' ? 'إعادة المحاولة' : 'Retry'}</span>
+          </button>
         </div>
       )}
 

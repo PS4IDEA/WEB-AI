@@ -175,7 +175,7 @@ function robustParseJSON(text: string): any {
 async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, jsonParser?: (text: string) => any) {
   const modelsToTry = Array.from(new Set([
     params.model,
-    "gemini-2.5-flash",
+    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-flash-latest"
   ].filter(Boolean)));
@@ -427,6 +427,98 @@ app.post("/api/send-email", async (req, res) => {
   }
 });
 
+// Gemini API Status & Health Check Endpoint with server-side caching and quota detection
+let statusCache: {
+  success: boolean;
+  working: boolean;
+  quotaExceeded: boolean;
+  latencyMs: number | null;
+  error?: string;
+  lastChecked: number;
+} | null = null;
+
+app.get("/api/gemini-status", async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.json({ success: false, working: false, quotaExceeded: false, error: "API Key is missing in Settings > Secrets" });
+    }
+
+    // Return cached status if checked in the last 30 seconds
+    if (statusCache && (Date.now() - statusCache.lastChecked < 30000)) {
+      return res.json(statusCache);
+    }
+
+    const ai = getAI();
+    const startTime = Date.now();
+    try {
+      await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: "Say OK",
+        config: {
+          maxOutputTokens: 2,
+        }
+      });
+      const latency = Date.now() - startTime;
+      
+      statusCache = {
+        success: true,
+        working: true,
+        quotaExceeded: false,
+        latencyMs: latency,
+        lastChecked: Date.now()
+      };
+      return res.json(statusCache);
+    } catch (err: any) {
+      const message = String(err.message || "").toLowerCase();
+      const status = err.status || (err.response && err.response.status) || err.statusCode;
+      const isQuota = status === 429 || message.includes("quota") || message.includes("rate limit") || message.includes("limit exceeded") || message.includes("exhausted");
+      const isAuthError = status === 401 || status === 403 || message.includes("api_key_invalid") || message.includes("key not valid") || message.includes("invalid api key") || message.includes("invalid_argument");
+
+      if (isQuota) {
+        console.warn("[Backend API] Gemini status check detected Quota Exceeded (Key is valid but exhausted)");
+        statusCache = {
+          success: true,
+          working: true,
+          quotaExceeded: true,
+          latencyMs: null,
+          error: "Quota Exceeded",
+          lastChecked: Date.now()
+        };
+        return res.json(statusCache);
+      }
+
+      if (isAuthError) {
+        console.error("[Backend API] Gemini status check detected Invalid API Key");
+        statusCache = {
+          success: false,
+          working: false,
+          quotaExceeded: false,
+          latencyMs: null,
+          error: "Invalid API Key",
+          lastChecked: Date.now()
+        };
+        return res.json(statusCache);
+      }
+
+      console.error("[Backend API] Gemini status check failed with general error:", err);
+      // For general transient network issues, if we have a key, we assume working = true to avoid locking out the UI
+      statusCache = {
+        success: true,
+        working: true,
+        quotaExceeded: false,
+        latencyMs: null,
+        error: err.message || "Transient connection issue",
+        lastChecked: Date.now()
+      };
+      return res.json(statusCache);
+    }
+  } catch (outerErr: any) {
+    console.error("[Backend API] Gemini status check outer error:", outerErr);
+    res.json({ success: false, working: false, quotaExceeded: false, error: outerErr.message || "Unknown error" });
+  }
+});
+
 // 1. Business Name & Domain Generator
 app.post("/api/generate-names", async (req, res) => {
   try {
@@ -457,10 +549,11 @@ You MUST respond with a JSON array of objects strictly matching this structure:
 Do not include any markdown markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 
@@ -510,10 +603,11 @@ Return a JSON object matching this structure:
 Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 
@@ -545,10 +639,11 @@ Return a JSON array of objects strictly matching this structure:
 Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 
@@ -592,10 +687,11 @@ Generate and return a JSON object matching this structure:
 Do not include markdown markers. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 
@@ -659,10 +755,11 @@ You MUST respond with a JSON object strictly matching this structure:
 Do not include any markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 
@@ -701,10 +798,11 @@ Example Output:
 Do not include markdown markers. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.1,
       },
     }, 2, robustParseJSON);
 
@@ -751,10 +849,11 @@ Respond with a JSON object strictly matching this structure:
 Do not include markdown tags. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
+        temperature: 0.3,
       },
     }, 2, robustParseJSON);
 

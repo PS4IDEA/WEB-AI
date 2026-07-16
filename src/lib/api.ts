@@ -147,11 +147,9 @@ function robustParseJSON(text: string): any {
 // Client-side helper to try multiple Gemini models in sequence with exponential retry
 async function generateClientContentWithRetry(ai: any, systemPrompt: string, config: any = {}): Promise<any> {
   const modelsToTry = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash",
+    "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
-    "gemini-flash-latest",
-    "gemini-2.5-flash"
+    "gemini-flash-latest"
   ];
   let lastError: any = null;
   for (const model of modelsToTry) {
@@ -464,45 +462,67 @@ export async function fetchAPI(url: string, options: RequestInit = {}): Promise<
     }
   }
 
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers || {}),
-      },
-    });
+  const maxRetries = 2;
+  let lastError: any = null;
 
-    const contentType = response.headers.get('content-type') || '';
-    
-    // Check if response is HTML (which happens when rewrites fall back to index.html on static environments)
-    if (contentType.includes('text/html')) {
-      const text = await response.text();
-      if (text.trim().startsWith('<!DOCTYPE') || text.includes('<html')) {
-        throw new Error("Server returned HTML. Ensure the backend server is running.");
-      }
-    }
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
 
-    if (!response.ok) {
-      let errorMessage = "Unknown server error";
-      try {
-        const errorJson = await response.clone().json();
-        errorMessage = errorJson.error || JSON.stringify(errorJson);
-      } catch (jsonErr) {
-        try {
-          errorMessage = await response.text();
-        } catch (textErr) {
-          errorMessage = response.statusText || `${response.status}`;
+      const contentType = response.headers.get('content-type') || '';
+      
+      // Check if response is HTML (which happens when rewrites fall back to index.html on static environments)
+      if (contentType.includes('text/html')) {
+        const text = await response.text();
+        if (text.trim().startsWith('<!DOCTYPE') || text.includes('<html')) {
+          const lang = (typeof window !== 'undefined' && localStorage.getItem('brandforge_language')) === 'ar' ? 'ar' : 'en';
+          if (lang === 'ar') {
+            throw new Error("عذرا نقوم باصلاحات لسيرفرات الموقع ولن نقوم بخصم credits من رصيدك");
+          } else {
+            throw new Error("Sorry, we are currently performing server maintenance. No credits will be deducted from your balance.");
+          }
         }
       }
-      console.error(`[API Connection Error] Failed to call ${url}: Status ${response.status} - ${errorMessage}`);
-      throw new Error(`API Error: ${response.status} - ${errorMessage}`);
-    }
 
-    const data = await response.json();
-    return data;
-  } catch (error: any) {
-    console.error(`[API Network Error] Network request to ${url} failed:`, error);
-    throw error;
+      if (!response.ok) {
+        let errorMessage = "Unknown server error";
+        try {
+          const errorJson = await response.clone().json();
+          errorMessage = errorJson.error || JSON.stringify(errorJson);
+        } catch (jsonErr) {
+          try {
+            errorMessage = await response.text();
+          } catch (textErr) {
+            errorMessage = response.statusText || `${response.status}`;
+          }
+        }
+        console.error(`[API Connection Error] Failed to call ${url}: Status ${response.status} - ${errorMessage}`);
+        throw new Error(`API Error: ${response.status} - ${errorMessage}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`[API Network Warning] Attempt ${attempt + 1}/${maxRetries + 1} to fetch ${url} failed:`, error);
+      
+      const errMsg = String(error.message || "");
+      if (errMsg.includes("maintenance") || errMsg.includes("اصلاحات") || errMsg.includes("API Error") || errMsg.includes("Quota") || errMsg.includes("Key")) {
+        throw error;
+      }
+
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
   }
+
+  console.error(`[API Network Error] Network request to ${url} failed after ${maxRetries + 1} attempts:`, lastError);
+  throw lastError;
 }

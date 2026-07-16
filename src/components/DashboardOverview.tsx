@@ -1029,8 +1029,11 @@ export default function DashboardOverview({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <button 
                 onClick={() => simulateBuyCredits(100, 3)}
-                className="p-4 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-850 bg-indigo-50/10 hover:bg-indigo-50/30 text-center space-y-1.5 cursor-pointer"
+                className="p-4 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-850 bg-indigo-50/10 hover:bg-indigo-50/30 text-center space-y-1.5 cursor-pointer relative overflow-hidden"
               >
+                <span className="absolute top-0.5 right-1 text-[7px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1 rounded select-none">
+                  {language === 'ar' ? 'باي بال' : 'PayPal'}
+                </span>
                 <Coins className="w-5 h-5 text-indigo-500 mx-auto" />
                 <span className="block text-xs font-semibold text-indigo-700 dark:text-indigo-400">{language === 'ar' ? 'شراء 100 رصيد' : 'Buy 100 Credits'}</span>
                 <span className="block text-[10px] text-indigo-500">$3</span>
@@ -2056,52 +2059,64 @@ export default function DashboardOverview({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-2">
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'حزمة البداية' : 'Starter Pack'}</span>
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3 relative overflow-hidden">
+                <span className="absolute top-1 right-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8.5px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 select-none">
+                  {language === 'ar' ? 'باي بال مُعدّ' : 'PayPal Configured'}
+                </span>
+                <span className="block text-xs font-semibold text-slate-400 pt-1">{language === 'ar' ? 'حزمة البداية' : 'Starter Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">100 {t.credits}</span>
                 <span className="block text-lg font-bold text-indigo-600">$3</span>
                 <button 
                   onClick={() => simulateBuyCredits(100, 3)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition animate-pulse"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/5 text-center space-y-3 relative">
+              <div className="p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/5 text-center space-y-3 relative overflow-hidden">
+                <span className="absolute top-1 right-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8.5px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 select-none">
+                  {language === 'ar' ? 'باي بال مُعدّ' : 'PayPal Configured'}
+                </span>
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-indigo-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full uppercase">
                   {language === 'ar' ? 'شائع' : 'Best Seller'}
                 </span>
-                <span className="block text-xs font-semibold text-indigo-500 mt-1">{language === 'ar' ? 'حزمة النمو' : 'Growth Pack'}</span>
+                <span className="block text-xs font-semibold text-indigo-500 mt-2">{language === 'ar' ? 'حزمة النمو' : 'Growth Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">500 {t.credits}</span>
                 <span className="block text-lg font-bold text-indigo-600">$12</span>
                 <button 
                   onClick={() => simulateBuyCredits(500, 12)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition animate-pulse"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'الحزمة الفائقة' : 'Power Pack'}</span>
+              <div className="p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/5 text-center space-y-3 relative overflow-hidden">
+                <span className="absolute top-1 right-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8.5px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 select-none">
+                  {language === 'ar' ? 'باي بال مُعدّ' : 'PayPal Configured'}
+                </span>
+                <span className="block text-xs font-semibold text-indigo-500 mt-2">{language === 'ar' ? 'الحزمة الفائقة' : 'Power Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">1500 {t.credits}</span>
                 <span className="block text-lg font-bold text-indigo-600">$30</span>
                 <button 
                   onClick={() => simulateBuyCredits(1500, 30)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition animate-pulse"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
                 </button>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-3">
-                <span className="block text-xs font-semibold text-slate-400">{language === 'ar' ? 'حزمة الوكالات' : 'Elite Agency Pack'}</span>
+              <div className="p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/5 text-center space-y-3 relative overflow-hidden">
+                <span className="absolute top-1 right-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[8.5px] font-bold px-1.5 py-0.5 rounded border border-emerald-500/20 select-none">
+                  {language === 'ar' ? 'باي بال مُعدّ' : 'PayPal Configured'}
+                </span>
+                <span className="block text-xs font-semibold text-indigo-500 mt-2">{language === 'ar' ? 'حزمة الوكالات' : 'Elite Agency Pack'}</span>
                 <span className="block text-xl font-bold text-slate-850 dark:text-white">4000 {t.credits}</span>
                 <span className="block text-lg font-bold text-indigo-600">$60</span>
                 <button 
                   onClick={() => simulateBuyCredits(4000, 60)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-xs font-semibold cursor-pointer transition animate-pulse"
                 >
                   {language === 'ar' ? 'شراء الحزمة' : 'Buy Pack'}
                 </button>

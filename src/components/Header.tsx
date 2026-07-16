@@ -32,6 +32,38 @@ export default function Header({
 }: HeaderProps) {
   const t = translations[language];
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [geminiStatus, setGeminiStatus] = useState<'checking' | 'active' | 'quota_warning' | 'error'>('checking');
+  const [geminiLatency, setGeminiLatency] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/gemini-status');
+        const data = await res.json();
+        if (active) {
+          if (data.success && data.working) {
+            if (data.quotaExceeded) {
+              setGeminiStatus('quota_warning');
+            } else {
+              setGeminiStatus('active');
+              setGeminiLatency(data.latencyMs);
+            }
+          } else {
+            setGeminiStatus('error');
+          }
+        }
+      } catch {
+        if (active) {
+          setGeminiStatus('error');
+        }
+      }
+    };
+    checkStatus();
+    return () => {
+      active = false;
+    };
+  }, [onRefresh]);
 
   const handleNavClick = (page: Page) => {
     setCurrentPage(page);
@@ -61,6 +93,49 @@ export default function Header({
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
                 <span className="hidden sm:inline">Firebase Connected</span>
+              </div>
+            )}
+            
+            {/* Gemini API Status Badge */}
+            {geminiStatus === 'active' && (
+              <div 
+                className="hidden sm:flex items-center gap-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-indigo-500/20 ml-1.5"
+                title={language === 'ar' ? `سرعة استجابة الذكاء الاصطناعي: ${geminiLatency} ملي ثانية` : `AI Response speed: ${geminiLatency}ms`}
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
+                </span>
+                <span>
+                  {language === 'ar' ? `الذكاء الاصطناعي نشط (${geminiLatency}ms)` : `AI Active (${geminiLatency}ms)`}
+                </span>
+              </div>
+            )}
+            {geminiStatus === 'quota_warning' && (
+              <div 
+                className="hidden sm:flex items-center gap-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-amber-500/20 ml-1.5"
+                title={language === 'ar' ? "مفتاح API الخاص بك صحيح، ولكن تم تجاوز حد الاستخدام المجاني لليوم. يرجى تكرار المحاولة لاحقاً أو إدخال مفتاح مدفوع." : "Your API key is valid, but the free tier quota is exhausted. Please try again later or add a paid key."}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>
+                  {language === 'ar' ? "انتهى رصيد الاستخدام المجاني" : "Quota Exceeded"}
+                </span>
+              </div>
+            )}
+            {geminiStatus === 'checking' && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-medium ml-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
+                <span>
+                  {language === 'ar' ? 'فحص الاتصال...' : 'Checking AI...'}
+                </span>
+              </div>
+            )}
+            {geminiStatus === 'error' && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-rose-500/20 ml-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                <span>
+                  {language === 'ar' ? 'خطأ في المفتاح' : 'Key Error'}
+                </span>
               </div>
             )}
           </div>

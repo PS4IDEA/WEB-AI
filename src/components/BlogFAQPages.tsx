@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Language, Page, BlogArticle, SupportTicket } from '../types';
-import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download, RefreshCw, X, Lock } from 'lucide-react';
+import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download, RefreshCw, X, Lock, CreditCard } from 'lucide-react';
 import CheckoutModal from './CheckoutModal';
 
 interface BlogFAQPagesProps {
@@ -244,7 +244,7 @@ export default function BlogFAQPages({
             </div>
             <button 
               onClick={() => handleBuyPack(100, 3)}
-              className="w-full mt-6 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-850 dark:text-slate-200 py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
+              className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold text-xs transition cursor-pointer"
             >
               {isAr ? 'شراء الحزمة' : 'Buy Pack'}
             </button>

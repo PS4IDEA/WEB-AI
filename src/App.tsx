@@ -44,7 +44,20 @@ import {
 export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showRefreshToast, setShowRefreshToast] = useState<boolean>(false);
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('brandforge_language');
+      if (saved === 'en' || saved === 'ar') return saved as Language;
+    }
+    return 'en';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('brandforge_language', language);
+    }
+  }, [language]);
+
   const [darkMode, setDarkMode] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [activeDashboardTab, setActiveDashboardTab] = useState<DashboardTab>('overview');

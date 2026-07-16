@@ -325,9 +325,8 @@ export default function ColorPaletteGenerator({
     setAiLoading(true);
     setAiError(null);
 
-    // Costs 2 credits
-    const creditSuccess = onDeductCredits(2);
-    if (!creditSuccess) {
+    const userCredits = user && typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
+    if (userCredits < 2) {
       setAiError(isAr ? 'عذراً! الرصيد الحالي غير كافٍ.' : 'Insufficient credits. Please load credits or upgrade.');
       setAiLoading(false);
       return;
@@ -345,6 +344,7 @@ export default function ColorPaletteGenerator({
       });
 
       if (resJson.success && resJson.data?.colors) {
+        onDeductCredits(2);
         const aiColors = resJson.data.colors;
         setSwatches(prev => prev.map((sw, idx) => {
           if (sw.locked) return sw; // Keep user's locked colors! Extremely clever design decision
@@ -558,7 +558,16 @@ export default function ColorPaletteGenerator({
               </button>
             </div>
             {aiError && (
-              <p className="text-[10px] text-red-500 font-semibold mt-1.5">{aiError}</p>
+              <div className="flex items-center justify-between gap-3 mt-2 p-2 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/40">
+                <p className="text-[10px] text-red-500 font-semibold">{aiError}</p>
+                <button
+                  onClick={handleAIPaletteGenerate}
+                  disabled={aiLoading}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer shrink-0"
+                >
+                  {isAr ? 'إعادة المحاولة' : 'Retry'}
+                </button>
+              </div>
             )}
           </div>
         </div>
