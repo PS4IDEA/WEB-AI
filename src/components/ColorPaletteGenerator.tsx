@@ -7,6 +7,7 @@ import {
   Download, Save, Sliders, Layout, Shuffle, Trash2, ArrowLeftRight 
 } from 'lucide-react';
 import { fetchAPI } from '../lib/api';
+import LoadingOverlay from './ui/LoadingOverlay';
 
 // Helper: HSL to HEX
 function hslToHex(h: number, s: number, l: number): string {
@@ -461,7 +462,9 @@ export default function ColorPaletteGenerator({
   };
 
   return (
-    <div className="space-y-8 animate-fade-in" id="palette-generator-tool">
+    <>
+      <LoadingOverlay isLoading={aiLoading} language={language} />
+      <div className="space-y-8 animate-fade-in" id="palette-generator-tool">
       
       {/* Tool Header Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/40 dark:shadow-none">
@@ -944,5 +947,6 @@ export default function ColorPaletteGenerator({
       </div>
 
     </div>
+    </>
   );
 }

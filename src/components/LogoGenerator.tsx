@@ -4,6 +4,7 @@ import { Language, UserProfile, GeneratedLogo } from '../types';
 import { Sparkles, Download, Bookmark, Copy, Check, FileCode, AlertTriangle, RefreshCw, X, Maximize2, Share2 } from 'lucide-react';
 import { fetchAPI } from '../lib/api';
 import { motion } from 'motion/react';
+import LoadingOverlay from './ui/LoadingOverlay';
 
 interface LogoGeneratorProps {
   language: Language;
@@ -205,7 +206,9 @@ export default function LogoGenerator({
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <>
+      <LoadingOverlay isLoading={loading} language={language} />
+      <div className="space-y-8 animate-fade-in">
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/40 dark:shadow-none">
         
         <div className="flex items-center gap-3 mb-6">
@@ -602,5 +605,6 @@ export default function LogoGenerator({
       )}
 
     </div>
+    </>
   );
 }

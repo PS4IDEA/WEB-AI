@@ -10,7 +10,12 @@ export type Page =
   | 'terms' 
   | 'privacy' 
   | 'dashboard' 
-  | 'admin';
+  | 'admin'
+  | 'business-cards'
+  | 'social-media'
+  | 'domain-checker'
+  | 'seo'
+  | 'brand-voice';
 
 export type DashboardTab = 
   | 'overview' 

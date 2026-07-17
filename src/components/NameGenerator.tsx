@@ -4,6 +4,7 @@ import { translations } from '../translations';
 import { Language, UserProfile, GeneratedName } from '../types';
 import { Sparkles, Copy, Check, Bookmark, Globe, ArrowRight, AlertTriangle, HelpCircle, Share2 } from 'lucide-react';
 import { fetchAPI } from '../lib/api';
+import LoadingOverlay from './ui/LoadingOverlay';
 
 interface NameGeneratorProps {
   language: Language;
@@ -106,7 +107,9 @@ export default function NameGenerator({
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <>
+      <LoadingOverlay isLoading={loading} language={language} />
+      <div className="space-y-8 animate-fade-in">
       
       {/* Search / Config Card */}
       <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/40 dark:shadow-none">
@@ -365,5 +368,6 @@ export default function NameGenerator({
       )}
 
     </div>
+    </>
   );
 }

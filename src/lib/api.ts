@@ -28,119 +28,92 @@ function cleanJSON(text: string): string {
 
 function robustParseJSON(text: string): any {
   let cleaned = text.trim();
-
-  // 1. Strip markdown code block wrappers if they exist
-  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
-  const match = codeBlockRegex.exec(cleaned);
+  const match = /```(?:json)?\s*([\s\S]*?)\s*```/gi.exec(cleaned);
   if (match && match[1]) {
     cleaned = match[1].trim();
-  } else {
-    // If no markdown block, search for the first '{' or '[' and last '}' or ']'
-    const firstBrace = cleaned.indexOf('{');
-    const firstBracket = cleaned.indexOf('[');
-    let startIdx = -1;
-    if (firstBrace !== -1 && firstBracket !== -1) {
-      startIdx = Math.min(firstBrace, firstBracket);
-    } else {
-      startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
-    }
-
-    const lastBrace = cleaned.lastIndexOf('}');
-    const lastBracket = cleaned.lastIndexOf(']');
-    const endIdx = Math.max(lastBrace, lastBracket);
-
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      cleaned = cleaned.substring(startIdx, endIdx + 1);
-    }
   }
 
-  // A. Remove trailing commas within arrays or objects.
-  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else {
+    startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+  }
+  
+  if (startIdx !== -1) {
+    cleaned = cleaned.substring(startIdx);
+  }
 
-  // B. Try parsing. If it fails, apply advanced sanitization.
   try {
     return JSON.parse(cleaned);
-  } catch (initialError) {
+  } catch (e) {
     console.warn("[Client API] Standard JSON.parse failed. Applying advanced sanitization...");
-    
-    // C. Fix unescaped control characters and unescaped quotes inside string fields.
+    let depth = 0;
     let inString = false;
     let escapeActive = false;
+    let endIdx = -1;
     let sanitized = "";
-    
+    let lastNonWhitespaceChar = '';
+
     for (let i = 0; i < cleaned.length; i++) {
       const char = cleaned[i];
-      
       if (char === '\\') {
         escapeActive = !escapeActive;
         sanitized += char;
       } else if (char === '"') {
-        if (escapeActive) {
-          sanitized += char;
-          escapeActive = false;
-        } else {
-          let isBoundary = false;
-          
-          if (inString) {
-            let nextNonWhitespace = "";
-            for (let j = i + 1; j < cleaned.length; j++) {
-              if (!/\s/.test(cleaned[j])) {
-                nextNonWhitespace = cleaned[j];
-                break;
-              }
-            }
-            if (nextNonWhitespace === ',' || nextNonWhitespace === '}' || nextNonWhitespace === ']' || nextNonWhitespace === ':') {
-              isBoundary = true;
-            }
-          } else {
-            let prevNonWhitespace = "";
-            for (let j = i - 1; j >= 0; j--) {
-              if (!/\s/.test(cleaned[j])) {
-                prevNonWhitespace = cleaned[j];
-                break;
-              }
-            }
-            if (prevNonWhitespace === ':' || prevNonWhitespace === ',' || prevNonWhitespace === '{' || prevNonWhitespace === '[') {
-              isBoundary = true;
-            }
-          }
-          
-          if (isBoundary) {
-            inString = !inString;
-            sanitized += char;
-          } else {
-            if (inString) {
-              sanitized += '\\"';
-            } else {
-              inString = true;
-              sanitized += char;
-            }
-          }
-        }
-      } else {
+        if (!escapeActive) inString = !inString;
+        sanitized += char;
         escapeActive = false;
-        if (inString) {
-          if (char === '\n') {
-            sanitized += '\\n';
-          } else if (char === '\r') {
-            sanitized += '\\r';
-          } else if (char === '\t') {
-            sanitized += '\\t';
-          } else {
-            sanitized += char;
+        if (!inString) lastNonWhitespaceChar = '"';
+      } else if (!inString) {
+        if (char === '{' || char === '[') {
+          depth++;
+          sanitized += char;
+          lastNonWhitespaceChar = char;
+        } else if (char === '}' || char === ']') {
+          if (lastNonWhitespaceChar === ',') {
+            sanitized = sanitized.replace(/,\s*$/, '');
           }
+          depth--;
+          sanitized += char;
+          lastNonWhitespaceChar = char;
+          if (depth === 0) {
+            endIdx = i;
+            break;
+          }
+        } else if (!/\s/.test(char)) {
+          sanitized += char;
+          lastNonWhitespaceChar = char;
         } else {
           sanitized += char;
         }
+        escapeActive = false;
+      } else {
+        if (char === '\n') {
+          sanitized += '\\n';
+        } else if (char === '\r') {
+          sanitized += '\\r';
+        } else if (char === '\t') {
+          sanitized += '\\t';
+        } else {
+          sanitized += char;
+        }
+        escapeActive = false;
+      }
+    }
+
+    if (depth === 0 && sanitized.length > 0) {
+      try {
+        return JSON.parse(sanitized);
+      } catch (finalError) {
+        console.error("[Client API] Advanced sanitization also failed to parse JSON.", finalError);
+        throw e;
       }
     }
     
-    try {
-      return JSON.parse(sanitized);
-    } catch (finalError: any) {
-      console.error("[Client API] Advanced sanitization also failed to parse JSON.", finalError);
-      throw initialError;
-    }
+    throw e;
   }
 }
 
@@ -178,6 +151,12 @@ async function generateClientContentWithRetry(ai: any, systemPrompt: string, con
         if (isAuthError) {
           console.error(`[Client API] Auth Error! Aborting fallback loop.`);
           throw err;
+        }
+
+        const isQuotaError = status === 429 || message.includes("Quota") || message.includes("quota");
+        if (isQuotaError) {
+          console.warn(`[Client API] Quota exhausted or rate limited for ${model}. Breaking retry loop to try next model.`);
+          break; // Skip retries for this model, try the next one
         }
 
         // If it is a different 400 (like bad request due to invalid parameters other than model), we only abort if it's not a model-not-found error

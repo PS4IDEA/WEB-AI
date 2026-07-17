@@ -96,47 +96,50 @@ export default function Header({
               </div>
             )}
             
-            {/* Gemini API Status Badge */}
-            {geminiStatus === 'active' && (
-              <div 
-                className="hidden sm:flex items-center gap-1.5 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-indigo-500/20 ml-1.5"
-                title={language === 'ar' ? `سرعة استجابة الذكاء الاصطناعي: ${geminiLatency} ملي ثانية` : `AI Response speed: ${geminiLatency}ms`}
-              >
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
-                </span>
-                <span>
-                  {language === 'ar' ? `الذكاء الاصطناعي نشط (${geminiLatency}ms)` : `AI Active (${geminiLatency}ms)`}
-                </span>
-              </div>
-            )}
-            {geminiStatus === 'checking' && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full text-[10px] font-medium ml-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse"></span>
-                <span>
-                  {language === 'ar' ? 'فحص الاتصال...' : 'Checking AI...'}
-                </span>
-              </div>
-            )}
-            {geminiStatus === 'error' && (
-              <div className="hidden sm:flex items-center gap-1.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-rose-500/20 ml-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                <span>
-                  {language === 'ar' ? 'خطأ في المفتاح' : 'Key Error'}
-                </span>
-              </div>
-            )}
+
           </div>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium relative">
             <button 
               onClick={() => handleNavClick('features')}
               className={`transition-colors duration-200 ${currentPage === 'features' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
             >
               {t.features}
             </button>
+            
+            {/* Services Dropdown */}
+            <div className="relative group cursor-pointer">
+              <button className="flex items-center gap-1 text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white transition-colors duration-200">
+                {language === 'ar' ? 'خدمات إضافية' : 'Additional Services'}
+                <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top translate-y-2 group-hover:translate-y-0">
+                <div className="p-2 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
+                  <button onClick={() => handleNavClick('business-cards')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                    {language === 'ar' ? 'تصميم بطاقات العمل' : 'Business Card Maker'}
+                  </button>
+                  <button onClick={() => handleNavClick('social-media')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-pink-500"></div>
+                    {language === 'ar' ? 'أصول السوشيال ميديا' : 'Social Media Assets'}
+                  </button>
+                  <button onClick={() => handleNavClick('domain-checker')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    {language === 'ar' ? 'فحص توفر الدومين' : 'Domain Name Checker'}
+                  </button>
+                  <button onClick={() => handleNavClick('seo')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                    {language === 'ar' ? 'تحسين محركات البحث SEO' : 'SEO Optimization'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <button 
               onClick={() => handleNavClick('pricing')}
               className={`transition-colors duration-200 ${currentPage === 'pricing' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
@@ -251,6 +254,15 @@ export default function Header({
           >
             {t.features}
           </button>
+          
+          <div className="flex flex-col gap-2 px-4 py-2 border-l-2 border-indigo-100 dark:border-indigo-900/30 ml-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{language === 'ar' ? 'خدمات إضافية' : 'Additional Services'}</span>
+            <button onClick={() => handleNavClick('business-cards')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'تصميم بطاقات العمل' : 'Business Card Maker'}</button>
+            <button onClick={() => handleNavClick('social-media')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'أصول السوشيال ميديا' : 'Social Media Assets'}</button>
+            <button onClick={() => handleNavClick('domain-checker')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'فحص توفر الدومين' : 'Domain Name Checker'}</button>
+            <button onClick={() => handleNavClick('seo')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'تحسين محركات البحث SEO' : 'SEO Optimization'}</button>
+          </div>
+
           <button 
             onClick={() => handleNavClick('pricing')}
             className={`text-left text-base font-medium px-4 py-2 rounded-lg ${currentPage === 'pricing' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'}`}

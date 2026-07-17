@@ -12,6 +12,11 @@ import ColorPaletteGenerator from './components/ColorPaletteGenerator';
 import AdminPanel from './components/AdminPanel';
 import BlogFAQPages from './components/BlogFAQPages';
 import DashboardOverview from './components/DashboardOverview';
+import BusinessCardMaker from './components/services/BusinessCardMaker';
+import SocialMediaAssets from './components/services/SocialMediaAssets';
+import DomainChecker from './components/services/DomainChecker';
+import SeoOptimization from './components/services/SeoOptimization';
+import BrandVoice from './components/services/BrandVoice';
 import { sendWelcomeEmail, sendTestEmail } from './lib/emailService';
 import { 
   Sparkles, ShieldCheck, Coins, Users, Rocket, Target, 
@@ -127,7 +132,7 @@ export default function App() {
         setLanguage(urlLang);
       }
       
-      const validPages: Page[] = ['landing', 'features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy', 'dashboard', 'admin'];
+      const validPages: Page[] = ['landing', 'features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy', 'dashboard', 'admin', 'business-cards', 'social-media', 'domain-checker', 'seo', 'brand-voice'];
       if (urlPage && validPages.includes(urlPage as Page)) {
         setCurrentPage(urlPage as Page);
       }
@@ -1254,7 +1259,46 @@ export default function App() {
               {/* Tools Switcher Component */}
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/30 dark:shadow-none space-y-8">
                 
-                <div id="tour-name-generator">
+                {/* 🌟 MOST POPULAR / PREMIUM GOLDEN SERVICE: BRAND VOICE ARCHITECT */}
+                <div id="tour-brand-voice" className="relative p-0.5 rounded-[2rem] bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 shadow-2xl shadow-amber-500/10 overflow-hidden">
+                  {/* Glowing background highlights */}
+                  <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+                  
+                  <div className="bg-slate-50 dark:bg-slate-950 rounded-[1.95rem] p-6 sm:p-10 relative z-10 space-y-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/15 pb-6">
+                      <div className="space-y-1">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-950 font-black rounded-full text-[10px] uppercase tracking-wider shadow-md animate-bounce">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {language === 'ar' ? 'الخدمة الذهبية الأكثر طلباً ⭐' : 'MOST POPULAR GOLDEN SERVICE ⭐'}
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                          {language === 'ar' ? 'مساعد نبرة الصوت والهوية اللغوية' : 'Linguistic Brand Voice Architect'}
+                        </h3>
+                        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl">
+                          {language === 'ar' 
+                            ? 'صمم دليلاً لغوياً استثنائياً لعلامتك التجارية بالكامل وحلّل أسلوب الكتابة المناسب لجمهورك (يكلف 3 نقاط رصيد)' 
+                            : 'Architect a custom brand voice playbook, analyze writing styles, and craft cohesive guidelines (Costs 3 credits)'}
+                        </p>
+                      </div>
+                      <div className="hidden sm:block">
+                        <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold rounded-lg text-xs uppercase tracking-widest">
+                          Premium AI Model
+                        </span>
+                      </div>
+                    </div>
+
+                    <BrandVoice
+                      language={language}
+                      user={user}
+                      onDeductCredits={deductCredits}
+                      onOpenLogin={() => setShowAuthModal(true)}
+                      isEmbedded={true}
+                    />
+                  </div>
+                </div>
+
+                <div id="tour-name-generator" className="border-t border-slate-100 dark:border-slate-800 pt-8">
                   <NameGenerator
                     language={language}
                     user={user}
@@ -1354,6 +1398,48 @@ export default function App() {
             welcomeEmails={welcomeEmails}
             onSendTestEmail={handleSendTestEmail}
             currentUserEmail={user?.email || ''}
+          />
+        )}
+
+        {/* ADDITIONAL SERVICES */}
+        {currentPage === 'business-cards' && (
+          <BusinessCardMaker 
+            language={language} 
+            user={user}
+            onDeductCredits={deductCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
+          />
+        )}
+        {currentPage === 'social-media' && (
+          <SocialMediaAssets 
+            language={language} 
+            user={user}
+            onDeductCredits={deductCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
+          />
+        )}
+        {currentPage === 'domain-checker' && (
+          <DomainChecker 
+            language={language} 
+            user={user}
+            onDeductCredits={deductCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
+          />
+        )}
+        {currentPage === 'seo' && (
+          <SeoOptimization 
+            language={language} 
+            user={user}
+            onDeductCredits={deductCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
+          />
+        )}
+        {currentPage === 'brand-voice' && (
+          <BrandVoice 
+            language={language} 
+            user={user}
+            onDeductCredits={deductCredits}
+            onOpenLogin={() => setShowAuthModal(true)}
           />
         )}
 

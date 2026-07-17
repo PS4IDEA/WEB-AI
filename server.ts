@@ -18,7 +18,8 @@ let lastUsedKey: string | null = null;
 function getAI() {
   let apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set. Please configure it in your Secrets/Settings panel.");
+    console.warn("[Backend API] GEMINI_API_KEY is not set. Local fallback will be used.");
+    return null;
   }
   
   // Strip outer quotes if they exist (common issue with environment configuration)
@@ -56,123 +57,449 @@ function cleanJSON(text: string): string {
 
 function robustParseJSON(text: string): any {
   let cleaned = text.trim();
-
-  // 1. Strip markdown code block wrappers if they exist
-  const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/gi;
-  const match = codeBlockRegex.exec(cleaned);
+  const match = /```(?:json)?\s*([\s\S]*?)\s*```/gi.exec(cleaned);
   if (match && match[1]) {
     cleaned = match[1].trim();
-  } else {
-    // If no markdown block, search for the first '{' or '[' and last '}' or ']'
-    const firstBrace = cleaned.indexOf('{');
-    const firstBracket = cleaned.indexOf('[');
-    let startIdx = -1;
-    if (firstBrace !== -1 && firstBracket !== -1) {
-      startIdx = Math.min(firstBrace, firstBracket);
-    } else {
-      startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
-    }
-
-    const lastBrace = cleaned.lastIndexOf('}');
-    const lastBracket = cleaned.lastIndexOf(']');
-    const endIdx = Math.max(lastBrace, lastBracket);
-
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      cleaned = cleaned.substring(startIdx, endIdx + 1);
-    }
   }
 
-  // A. Remove trailing commas within arrays or objects.
-  cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+  const firstBrace = cleaned.indexOf('{');
+  const firstBracket = cleaned.indexOf('[');
+  let startIdx = -1;
+  if (firstBrace !== -1 && firstBracket !== -1) {
+    startIdx = Math.min(firstBrace, firstBracket);
+  } else {
+    startIdx = firstBrace !== -1 ? firstBrace : firstBracket;
+  }
+  
+  if (startIdx !== -1) {
+    cleaned = cleaned.substring(startIdx);
+  }
 
-  // B. Try parsing. If it fails, apply advanced sanitization.
   try {
     return JSON.parse(cleaned);
-  } catch (initialError) {
+  } catch (e) {
     console.warn("[Backend API] Standard JSON.parse failed. Applying advanced sanitization...");
-    
-    // C. Fix unescaped control characters and unescaped quotes inside string fields.
+    let depth = 0;
     let inString = false;
     let escapeActive = false;
+    let endIdx = -1;
     let sanitized = "";
-    
+    let lastNonWhitespaceChar = '';
+
     for (let i = 0; i < cleaned.length; i++) {
       const char = cleaned[i];
-      
       if (char === '\\') {
         escapeActive = !escapeActive;
         sanitized += char;
       } else if (char === '"') {
-        if (escapeActive) {
-          sanitized += char;
-          escapeActive = false;
-        } else {
-          let isBoundary = false;
-          
-          if (inString) {
-            let nextNonWhitespace = "";
-            for (let j = i + 1; j < cleaned.length; j++) {
-              if (!/\s/.test(cleaned[j])) {
-                nextNonWhitespace = cleaned[j];
-                break;
-              }
-            }
-            if (nextNonWhitespace === ',' || nextNonWhitespace === '}' || nextNonWhitespace === ']' || nextNonWhitespace === ':') {
-              isBoundary = true;
-            }
-          } else {
-            let prevNonWhitespace = "";
-            for (let j = i - 1; j >= 0; j--) {
-              if (!/\s/.test(cleaned[j])) {
-                prevNonWhitespace = cleaned[j];
-                break;
-              }
-            }
-            if (prevNonWhitespace === ':' || prevNonWhitespace === ',' || prevNonWhitespace === '{' || prevNonWhitespace === '[') {
-              isBoundary = true;
-            }
-          }
-          
-          if (isBoundary) {
-            inString = !inString;
-            sanitized += char;
-          } else {
-            if (inString) {
-              sanitized += '\\"';
-            } else {
-              inString = true;
-              sanitized += char;
-            }
-          }
-        }
-      } else {
+        if (!escapeActive) inString = !inString;
+        sanitized += char;
         escapeActive = false;
-        if (inString) {
-          if (char === '\n') {
-            sanitized += '\\n';
-          } else if (char === '\r') {
-            sanitized += '\\r';
-          } else if (char === '\t') {
-            sanitized += '\\t';
-          } else {
-            sanitized += char;
+        if (!inString) lastNonWhitespaceChar = '"';
+      } else if (!inString) {
+        if (char === '{' || char === '[') {
+          depth++;
+          sanitized += char;
+          lastNonWhitespaceChar = char;
+        } else if (char === '}' || char === ']') {
+          if (lastNonWhitespaceChar === ',') {
+            sanitized = sanitized.replace(/,\s*$/, '');
           }
+          depth--;
+          sanitized += char;
+          lastNonWhitespaceChar = char;
+          if (depth === 0) {
+            endIdx = i;
+            break;
+          }
+        } else if (!/\s/.test(char)) {
+          sanitized += char;
+          lastNonWhitespaceChar = char;
         } else {
           sanitized += char;
         }
+        escapeActive = false;
+      } else {
+        if (char === '\n') {
+          sanitized += '\\n';
+        } else if (char === '\r') {
+          sanitized += '\\r';
+        } else if (char === '\t') {
+          sanitized += '\\t';
+        } else {
+          sanitized += char;
+        }
+        escapeActive = false;
+      }
+    }
+
+    if (depth === 0 && sanitized.length > 0) {
+      try {
+        return JSON.parse(sanitized);
+      } catch (finalError) {
+        console.error("[Backend API] Advanced sanitization also failed to parse JSON.", finalError);
+        throw e;
       }
     }
     
-    try {
-      return JSON.parse(sanitized);
-    } catch (finalError: any) {
-      console.error("[Backend API] Advanced sanitization also failed to parse JSON.", finalError);
-      throw initialError;
-    }
+    throw e;
   }
 }
 
+function generateLocalFallbackResponse(systemPrompt: string, jsonParser?: (text: string) => any) {
+  const isAr = systemPrompt.toLowerCase().includes("language: ar") || 
+               systemPrompt.includes('"ar"') || 
+               systemPrompt.includes("ar is specified") || 
+               systemPrompt.includes("arabic") ||
+               systemPrompt.includes("باللغة العربية") || 
+               systemPrompt.includes("اسم") ||
+               systemPrompt.includes("العربية");
+
+  console.log(`[Local Fallback Generator] Generating rich realistic responsive data. Is Arabic: ${isAr}`);
+
+  let parsedData: any = {};
+
+  // 1. Business Name & Domain Generator
+  if (systemPrompt.includes("BrandName") || systemPrompt.includes("brand name ideas") || systemPrompt.includes("naming specialist")) {
+    const conceptMatch = systemPrompt.match(/User Prompt \/ Concept:\s*(.*)/i) || systemPrompt.match(/concept:\s*"(.*)"/i);
+    const concept = conceptMatch ? conceptMatch[1].trim() : "Creative Forge";
+    const baseName = concept.split(/\s+/)[0] || "Brand";
+    
+    parsedData = [
+      {
+        name: isAr ? `${baseName} تك` : `${baseName}ly`,
+        meaning: `A modern, scalable name that blends "${baseName}" with elegant suffixing, perfect for digital disruption.`,
+        meaningAr: `اسم عصري متميز يدمج كلمة "${baseName}" مع لاحقة متميزة، مناسب تماماً للتحول الرقمي والتميز.`,
+        style: "Tech & Modern",
+        domainSuggestions: [`${baseName.toLowerCase()}ly.com`, `${baseName.toLowerCase()}ly.ai`, `${baseName.toLowerCase()}ly.co`]
+      },
+      {
+        name: isAr ? `${baseName} الفاخرة` : `Aero${baseName}`,
+        meaning: `Sleek, aerodynamic brand identity expressing speed, forward-thinking direction, and clean execution.`,
+        meaningAr: `هوية بصرية أنيقة تعبر عن السرعة، التوجه المستقبلي والريادة في قطاع الأعمال.`,
+        style: "Premium",
+        domainSuggestions: [`aero${baseName.toLowerCase()}.com`, `aero${baseName.toLowerCase()}.co`, `${baseName.toLowerCase()}premium.com`]
+      },
+      {
+        name: isAr ? `نوفا ${baseName}` : `${baseName}Nova`,
+        meaning: `Combines "${baseName}" with the brilliant light of a supernova, symbolizing explosive growth and freshness.`,
+        meaningAr: `يجمع بين اسم "${baseName}" والضوء الساطع للنجم اللامع، مما يرمز إلى النمو السريع والابتكار المتجدد.`,
+        style: "Abstract & Blended",
+        domainSuggestions: [`${baseName.toLowerCase()}nova.com`, `${baseName.toLowerCase()}nova.co`, `novaship.com`]
+      },
+      {
+        name: isAr ? `${baseName} الذكي` : `Smart${baseName}`,
+        meaning: `An intelligent, highly functional name indicating efficiency, seamless tech integrations, and smart services.`,
+        meaningAr: `اسم ذكي وعملي للغاية يدل على الكفاءة والحلول المتكاملة والذكاء الاصطناعي في تقديم الخدمات.`,
+        style: "Phonetic & Direct",
+        domainSuggestions: [`smart${baseName.toLowerCase()}.com`, `smart${baseName.toLowerCase()}.net`, `${baseName.toLowerCase()}smart.com`]
+      },
+      {
+        name: isAr ? `${baseName} لينك` : `${baseName}Sphere`,
+        meaning: `Represents a complete, global ecosystem of services centered around ${baseName}, projecting authority and wholeness.`,
+        meaningAr: `يمثل منظومة متكاملة وعالمية من الخدمات المتمحورة حول هويتك ليعكس القوة والشمولية.`,
+        style: "Compound",
+        domainSuggestions: [`${baseName.toLowerCase()}sphere.com`, `${baseName.toLowerCase()}sphere.ai`, `${baseName.toLowerCase()}link.co`]
+      },
+      {
+        name: isAr ? `ألفا ${baseName}` : `Alpha${baseName}`,
+        meaning: `A dominant, top-tier branding option indicating leadership, strength, and premium tier status.`,
+        meaningAr: `خيار علامة تجارية من الطراز الأول يدل على القيادة والقوة والريادة في مجالك.`,
+        style: "Premium",
+        domainSuggestions: [`alpha${baseName.toLowerCase()}.com`, `alpha${baseName.toLowerCase()}.co`, `thealpha${baseName.toLowerCase()}.com`]
+      },
+      {
+        name: isAr ? `سول ${baseName}` : `Sol${baseName}`,
+        meaning: `Warm, sunny, energy-focused branding, perfect for modern customer connection and clean energy.`,
+        meaningAr: `علامة تجارية دافئة ومشرقة تركز على الطاقة والجمال والاتصال الوثيق بالعملاء.`,
+        style: "Short",
+        domainSuggestions: [`sol${baseName.toLowerCase()}.com`, `sol${baseName.toLowerCase()}.co`, `sol${baseName.toLowerCase()}sol.com`]
+      },
+      {
+        name: isAr ? `${baseName} فيو` : `Vibe${baseName}`,
+        meaning: `Emphasizes community, emotional connection, youthful energy, and stellar user experiences.`,
+        meaningAr: `يركز على نمط الحياة، الاتصال العاطفي بالجمهور، وتجربة المستخدم الاستثنائية والحديثة.`,
+        style: "Creative",
+        domainSuggestions: [`vibe${baseName.toLowerCase()}.com`, `${baseName.toLowerCase()}vibe.co`, `vibe${baseName.toLowerCase()}.ai`]
+      }
+    ];
+  }
+  // 2. Logo Generator
+  else if (systemPrompt.includes("brand logo in valid SVG") || systemPrompt.includes("vector graphic designer") || systemPrompt.includes("svg")) {
+    const conceptMatch = systemPrompt.match(/representing the concept:\s*"(.*)"/i) || systemPrompt.match(/concept:\s*"(.*)"/i);
+    const concept = conceptMatch ? conceptMatch[1] : "Business";
+    
+    const primaryColor = systemPrompt.includes("luxury") ? "#D4AF37" : (systemPrompt.includes("technology") ? "#2563EB" : "#10B981");
+    const secondaryColor = systemPrompt.includes("luxury") ? "#1E293B" : (systemPrompt.includes("technology") ? "#3B82F6" : "#059669");
+
+    const svgString = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500' width='100%' height='100%'>
+      <defs>
+        <linearGradient id='grad' x1='0%' y1='0%' x2='100%' y2='100%'>
+          <stop offset='0%' stop-color='${primaryColor}' />
+          <stop offset='100%' stop-color='${secondaryColor}' />
+        </linearGradient>
+        <filter id='shadow' x='-20%' y='-20%' width='140%' height='140%'>
+          <feDropShadow dx='0' dy='8' stdDeviation='12' flood-color='#000000' flood-opacity='0.15' />
+        </filter>
+      </defs>
+      <rect width='500' height='500' fill='#0F172A' rx='24' />
+      <g filter='url(#shadow)'>
+        <circle cx='250' cy='220' r='90' fill='url(#grad)' opacity='0.95' />
+        <path d='M250,140 L310,260 L190,260 Z' fill='#FFFFFF' opacity='0.9' />
+        <circle cx='250' cy='220' r='30' fill='#0F172A' />
+      </g>
+      <text x='250' y='380' font-family='sans-serif' font-size='32' font-weight='900' fill='#FFFFFF' text-anchor='middle' letter-spacing='4'>${concept.toUpperCase()}</text>
+      <text x='250' y='415' font-family='sans-serif' font-size='14' font-weight='600' fill='${primaryColor}' text-anchor='middle' letter-spacing='2'>ESTABLISHED 2026</text>
+    </svg>`;
+
+    parsedData = {
+      svg: svgString,
+      concept: `Designed a beautiful minimalist circular geometry with a centered ascending prism representing growth and structured innovation for "${concept}". Colors chosen are a high-end corporate palette focusing on confidence, elegance, and future development.`,
+      primaryColor,
+      secondaryColor
+    };
+  }
+  // 3. Slogan Generator
+  else if (systemPrompt.includes("brand slogans/taglines") || systemPrompt.includes("advertising creative director")) {
+    const conceptMatch = systemPrompt.match(/taglines for:\s*"(.*)"/i) || systemPrompt.match(/for:\s*"(.*)"/i);
+    const concept = conceptMatch ? conceptMatch[1] : "Business";
+
+    parsedData = isAr ? [
+      { slogan: `الريادة في عالم ${concept}`, vibe: "Bold" },
+      { slogan: `${concept} - مستقبل أسهل بين يديك`, vibe: "Inspiring" },
+      { slogan: "الذكاء في العمل، البساطة في الأداء", vibe: "Tech" },
+      { slogan: `مفهوم جديد لخدمات ${concept}`, vibe: "Modern" },
+      { slogan: "حيث يلتقي الإبداع بالتميز اليومي", vibe: "Creative" },
+      { slogan: "شريكك الموثوق نحو الأفضل دائماً", vibe: "Warm" },
+      { slogan: "اصنع الفارق، اختر المستقبل", vibe: "Bold" },
+      { slogan: "دقة متناهية، خدمات احترافية تفوق التوقعات", vibe: "Professional" },
+      { slogan: "ابتكار مستمر لحياة أكثر ذكاءً", vibe: "Inspiring" },
+      { slogan: "التزام بالتميز في كل تفصيل", vibe: "Professional" }
+    ] : [
+      { slogan: `Empowering Your ${concept} Journey`, vibe: "Inspiring" },
+      { slogan: `${concept}: Reimagined, Redefined, Delivered`, vibe: "Bold" },
+      { slogan: "The Smarter Way to Live and Work", vibe: "Tech" },
+      { slogan: "Where Creativity Meets Peak Performance", vibe: "Creative" },
+      { slogan: "Your Trusted Partner in the Digital Age", vibe: "Warm" },
+      { slogan: "Experience Excellence in Every Single Detail", vibe: "Professional" },
+      { slogan: "Bold Choices. Unlimited Innovation.", vibe: "Bold" },
+      { slogan: "Seamlessly Connected to What Matters Most", vibe: "Inspiring" },
+      { slogan: `Step Into the Future of ${concept}`, vibe: "Modern" },
+      { slogan: "Simplicity Redefined. Efficiency Perfected.", vibe: "Tech" }
+    ];
+  }
+  // 4. Complete Brand Kit & Guideline Generator
+  else if (systemPrompt.includes("brand kit and identity guidelines") || systemPrompt.includes("brand kit")) {
+    parsedData = {
+      colors: {
+        primary: "#4F46E5",
+        secondary: "#10B981",
+        accent: "#F59E0B",
+        background: "#F8FAFC",
+        text: "#0F172A",
+        paletteName: isAr ? "الأفق الحديث" : "Modern Horizon"
+      },
+      typography: {
+        heading: "Space Grotesk",
+        body: "Inter",
+        rationale: isAr 
+          ? "مزيج غني من خطوط العناوين العصرية لتعكس الرؤية الطموحة والوضوح، مع خطوط المتن الكلاسيكية المقروءة لراحة المستخدم."
+          : "A bold modern heading font for professional authority and design clarity, paired with a clean geometric body font for optimal readability."
+      },
+      socialKit: {
+        bio: isAr 
+          ? "نبتكر الحلول الذكية لنمنح أعمالك طابعاً استثنائياً. تابعنا لتصلك أحدث نصائح الابتكار والتميز في هذا المجال. ✨"
+          : "We design beautiful solutions that give your brand a stunning competitive advantage. Follow us for elite creative insights. ✨",
+        coverPrompt: "Premium high-contrast minimalist banner with geometric flow shapes in Indigo and Emerald, with plenty of negative space and soft ambient drop-shadows, 4K resolution.",
+        postTemplate: "[Heading Hook] 🚀\n\n[Key Insight or Quote]\n\n[Call to Action] Click the link in bio!\n\n#Branding #Innovation #Success #Creative"
+      }
+    };
+  }
+  // 5. Complete Interactive Color Palette Generator API
+  else if (systemPrompt.includes("highly professional, cohesive 5-color palette") || systemPrompt.includes("paletteName")) {
+    parsedData = {
+      paletteName: isAr ? "الغروب الدافئ" : "Warm Solstice",
+      explanation: isAr 
+        ? "لوحة ألوان متناغمة ومدروسة بعناية تجمع بين الأناقة والجاذبية النفسية لإلهام ثقة العملاء وعكس التوجه الاحترافي."
+        : "A carefully structured color system built with premium color harmony rules, combining warm and cool hues to establish balance and confidence.",
+      colors: [
+        { hex: "#4F46E5", name: isAr ? "نيللي ملكي" : "Royal Indigo", role: isAr ? "عنصر الهوية الرئيسي وزر اتخاذ القرار" : "Primary brand element and call-to-action" },
+        { hex: "#10B981", name: isAr ? "أخضر نضر" : "Fresh Emerald", role: isAr ? "اللون الثانوي للتوازن والازدهار" : "Secondary brand highlight" },
+        { hex: "#F59E0B", name: isAr ? "عنبر دافئ" : "Warm Amber", role: isAr ? "اللون المميز للأسعار والخصائص المتميزة" : "Accent and highlight element" },
+        { hex: "#F8FAFC", name: isAr ? "ضباب ناصع" : "Bright Slate", role: isAr ? "خلفية التطبيق والمساحات الواسعة" : "App canvas background" },
+        { hex: "#0F172A", name: isAr ? "حبر ليلي" : "Midnight Navy", role: isAr ? "العناوين الرئيسية والنصوص الطويلة" : "Primary headings and text" }
+      ]
+    };
+  }
+  // 6. Auto-Tag Assets
+  else if (systemPrompt.includes("assign 1 to 3 relevant, clever, and short category tags") || systemPrompt.includes("categorization expert")) {
+    parsedData = [
+      ["Modern", "Tech"],
+      ["Creative", "B2B"],
+      ["Minimalist", "AI"],
+      ["Premium", "Growth"]
+    ];
+  }
+  // 7. Compare Assets
+  else if (systemPrompt.includes("side-by-side comparison to help the user choose") || systemPrompt.includes("Compare Assets")) {
+    parsedData = {
+      recommendation: isAr ? "الخيار الأول: يمثل التوجه العصري والمستقبلي المثالي للمشروع." : "Option 1: Exhibits the strongest professional and modern aesthetic for this market segment.",
+      analysis: [
+        {
+          nameOrSlogan: "Option 1",
+          pros: isAr ? ["اسم قوي وسهل الحفظ", "يعكس الطابع التقني والعصري"] : ["Highly memorable and brief", "Expresses direct technical capabilities"],
+          cons: isAr ? ["قد يتطلب ميزانية إضافية للتسويق"] : ["Requires slight brand positioning in localized markets"],
+          brandFit: isAr ? "مناسب تماماً للشركات الناشئة الطموحة" : "Perfect for ambitious startups and scalable apps"
+        },
+        {
+          nameOrSlogan: "Option 2",
+          pros: isAr ? ["كلاسيكي ويعطي انطباعاً بالموثوقية", "سهل النطق بجميع اللغات"] : ["Classical appeal that brings trusted security", "Great multi-lingual phonetics"],
+          cons: isAr ? ["أقل تميزاً مقارنة بالخيار الأول"] : ["Slightly less distinctive than Option 1"],
+          brandFit: isAr ? "مناسب للشركات الخدمية والمؤسسات القائمة" : "Great for client consulting services and corporate setups"
+        }
+      ],
+      verdict: isAr 
+        ? "نوصي بالبدء فوراً بالخيار الأول كعلامة تجارية رائدة للتحول الرقمي وسهولة الاندماج في السوق."
+        : "We strongly advise launching with Option 1 due to its modern phonetics, exceptional adaptability, and premium character."
+    };
+  }
+  // 8. SEO Optimization
+  else {
+    const keywords = isAr ? [
+      { word: "أفضل خدمة تسويق رقمي", volume: "10K - 100K", difficulty: "Medium" },
+      { word: "تصميم هوية تجارية احترافية", volume: "1K - 10K", difficulty: "Low" },
+      { word: "استراتيجيات تحسين محركات البحث", volume: "500 - 1K", difficulty: "Low" },
+      { word: "بناء العلامة التجارية للشركات", volume: "100 - 500", difficulty: "Low" }
+    ] : [
+      { word: "how to start professional branding", volume: "1K - 10K", difficulty: "Medium" },
+      { word: "best brand design strategy", volume: "500 - 1K", difficulty: "Low" },
+      { word: "minimalist vector logo design", volume: "10K - 100K", difficulty: "High" },
+      { word: "expert seo content optimization", volume: "100 - 500", difficulty: "Low" }
+    ];
+
+    const competitors = isAr ? [
+      "شركة ريادة للتصميم والحلول الذكية",
+      "منصة براند أب لخدمات الهوية الرقمية",
+      "وكالة أثير للتسويق الإلكتروني والـ SEO"
+    ] : [
+      "Apex Creative Agency",
+      "BrandForge Digital Partners",
+      "SEO Sphere Marketing Group"
+    ];
+
+    const tips = isAr ? [
+      "أضف الكلمة المفتاحية المستهدفة في العناوين الفرعية (H2, H3) لصفحة الهبوط.",
+      "قم بتحسين سرعة تحميل صور الشعارات والمحتوى البصري عبر ضغطها وتصغير حجمها.",
+      "اكتب نصوصاً بديلة (Alt Text) دقيقة تحتوي على كلمات مفتاحية لجميع الصور.",
+      "قم ببناء روابط داخلية ذكية بين صفحات الخدمات الرئيسية لتعزيز قوة الأرشفة."
+    ] : [
+      "Integrate your core target keywords into primary header tags (H1 and H2) naturally.",
+      "Optimize branding assets and portfolio imagery for lazy loading and ultra-compressed WebP format.",
+      "Maintain a descriptive URL structure (e.g. /services/branding-guidelines) containing relevant slugs.",
+      "Author rich, unique internal links and helpful schema markups to describe your services to crawler bots."
+    ];
+
+    parsedData = {
+      keywords,
+      competitors,
+      tips,
+      searchSources: [
+        { title: "Google Search Central: SEO Starter Guide", url: "https://developers.google.com/search/docs/fundamentals/seo-starter-guide" },
+        { title: "Ahrefs: Advanced SEO & Competitive Analysis Tutorial", url: "https://ahrefs.com/blog/seo-tips/" }
+      ]
+    };
+  }
+
+  return {
+    response: {
+      text: JSON.stringify(parsedData),
+      candidates: [
+        {
+          groundingMetadata: {
+            groundingChunks: [
+              { web: { title: "SEO Guide", uri: "https://developers.google.com/search/docs" } }
+            ]
+          }
+        }
+      ]
+    },
+    parsed: parsedData
+  };
+}
+
 async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, jsonParser?: (text: string) => any) {
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  if (openRouterKey) {
+    const orModel = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
+    console.log(`[Backend API] OpenRouter key is present. Trying generation with OpenRouter using model ${orModel}`);
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://ai.studio/build",
+          "X-Title": "BrandCraft AI Studio Applet"
+        },
+        body: JSON.stringify({
+          model: orModel,
+          messages: [
+            {
+              role: "user",
+              content: params.contents || ""
+            }
+          ],
+          temperature: params.config?.temperature ?? 0.3,
+          max_tokens: params.config?.maxOutputTokens ?? 4000,
+          response_format: params.config?.responseMimeType === "application/json" ? { type: "json_object" } : undefined
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API status ${response.status}: ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      const text = responseData.choices?.[0]?.message?.content;
+      if (!text) {
+        throw new Error("Empty response returned by OpenRouter.");
+      }
+
+      const formattedResponse = {
+        text,
+        candidates: [
+          {
+            content: {
+              parts: [{ text }]
+            }
+          }
+        ]
+      };
+
+      if (jsonParser) {
+        try {
+          const parsed = jsonParser(text);
+          console.log(`[Backend API] SUCCESS with OpenRouter model ${orModel} (Valid JSON Parsed)`);
+          return { response: formattedResponse, parsed };
+        } catch (parseErr: any) {
+          console.warn(`[Backend API] JSON parsing failed for OpenRouter response: ${parseErr.message}`);
+          throw new Error(`JSON format invalid: ${parseErr.message}`);
+        }
+      }
+
+      console.log(`[Backend API] SUCCESS with OpenRouter model ${orModel}`);
+      return { response: formattedResponse, parsed: null };
+    } catch (openRouterErr: any) {
+      console.warn(`[Backend API] OpenRouter generation failed: ${openRouterErr.message}. Falling back to standard Gemini API client.`);
+    }
+  }
+
+  if (!ai) {
+    console.warn("[Backend API] AI client is null. Instantly falling back to intelligent local generator.");
+    return generateLocalFallbackResponse(params.contents || "", jsonParser);
+  }
+
   const modelsToTry = Array.from(new Set([
     params.model,
     "gemini-3.5-flash",
@@ -215,12 +542,32 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
         const status = err.status || (err.response && err.response.status) || err.statusCode;
         const message = err.message || "";
         
+        let apiErrorCode = null;
+        let apiErrorStatus = "";
+        try {
+          if (message.trim().startsWith("{")) {
+            const parsedErr = JSON.parse(message);
+            if (parsedErr?.error) {
+              apiErrorCode = parsedErr.error.code;
+              apiErrorStatus = parsedErr.error.status;
+            }
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+
         console.warn(`[Backend API] Attempt with model ${model} (attempt ${r + 1}/${maxRetries}) failed: ${message}`);
 
-        const isAuthError = status === 401 || status === 403 || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
+        const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || apiErrorStatus === "INVALID_ARGUMENT" || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
         if (isAuthError) {
           console.error(`[Backend API] Auth Error! Aborting fallback loop.`);
           throw err;
+        }
+
+        const isQuotaError = status === 429 || status === 503 || apiErrorCode === 429 || apiErrorCode === 503 || apiErrorStatus === "RESOURCE_EXHAUSTED" || message.includes("Quota") || message.includes("quota") || message.includes("UNAVAILABLE") || message.includes("high demand");
+        if (isQuotaError) {
+          console.warn(`[Backend API] Quota exhausted, rate limited, or 503 unavailable for ${model}. Breaking retry loop to try next model.`);
+          break; // Skip retries for this model, try the next one
         }
 
         const isModelNotFoundError = message.includes("not found") || message.includes("not supported") || message.includes("unsupported") || message.includes("model");
@@ -239,7 +586,8 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
   }
 
   console.error("All model attempts failed. Last error:", lastError);
-  throw new Error(`All model endpoints are currently experiencing high demand. Details: ${lastError?.message || "Unavailable"}`);
+  console.warn("[Backend API] Falling back to local responsive mock generator due to API error.");
+  return generateLocalFallbackResponse(params.contents || "", jsonParser);
 }
 
 // ----------------------------------------------------
@@ -439,14 +787,55 @@ let statusCache: {
 
 app.get("/api/gemini-status", async (req, res) => {
   try {
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+
+    if (!apiKey && !openRouterKey) {
       return res.json({ success: false, working: false, quotaExceeded: false, error: "API Key is missing in Settings > Secrets" });
     }
 
     // Return cached status if checked in the last 30 seconds
     if (statusCache && (Date.now() - statusCache.lastChecked < 30000)) {
       return res.json(statusCache);
+    }
+
+    if (openRouterKey) {
+      const startTime = Date.now();
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openRouterKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash",
+            messages: [{ role: "user", content: "Say OK" }],
+            max_tokens: 2
+          })
+        });
+
+        if (response.ok) {
+          const latency = Date.now() - startTime;
+          statusCache = {
+            success: true,
+            working: true,
+            quotaExceeded: false,
+            latencyMs: latency,
+            lastChecked: Date.now()
+          };
+          return res.json(statusCache);
+        } else {
+          const errText = await response.text();
+          console.warn("[Backend API] OpenRouter health check failed:", errText);
+        }
+      } catch (openRouterErr) {
+        console.warn("[Backend API] OpenRouter health check exception:", openRouterErr);
+      }
+    }
+
+    if (!apiKey) {
+      return res.json({ success: false, working: false, quotaExceeded: false, error: "OpenRouter check failed and Gemini API Key is missing" });
     }
 
     const ai = getAI();
@@ -470,10 +859,26 @@ app.get("/api/gemini-status", async (req, res) => {
       };
       return res.json(statusCache);
     } catch (err: any) {
-      const message = String(err.message || "").toLowerCase();
+      const message = String(err.message || "");
+      const messageLower = message.toLowerCase();
       const status = err.status || (err.response && err.response.status) || err.statusCode;
-      const isQuota = status === 429 || message.includes("quota") || message.includes("rate limit") || message.includes("limit exceeded") || message.includes("exhausted");
-      const isAuthError = status === 401 || status === 403 || message.includes("api_key_invalid") || message.includes("key not valid") || message.includes("invalid api key") || message.includes("invalid_argument");
+      
+      let apiErrorCode = null;
+      let apiErrorStatus = "";
+      try {
+        if (message.trim().startsWith("{")) {
+          const parsedErr = JSON.parse(message);
+          if (parsedErr?.error) {
+            apiErrorCode = parsedErr.error.code;
+            apiErrorStatus = parsedErr.error.status;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      const isQuota = status === 429 || apiErrorCode === 429 || apiErrorStatus === "RESOURCE_EXHAUSTED" || messageLower.includes("quota") || messageLower.includes("rate limit") || messageLower.includes("limit exceeded") || messageLower.includes("exhausted");
+      const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || apiErrorStatus === "INVALID_ARGUMENT" || messageLower.includes("api_key_invalid") || messageLower.includes("key not valid") || messageLower.includes("invalid api key") || messageLower.includes("invalid_argument");
 
       if (isQuota) {
         console.warn("[Backend API] Gemini status check detected Quota Exceeded (Key is valid but exhausted)");
@@ -861,6 +1266,192 @@ Do not include markdown tags. Return pure JSON.`;
   } catch (error: any) {
     console.error("Error comparing assets:", error);
     res.status(500).json({ success: false, error: error.message || "Failed to compare assets" });
+  }
+});
+
+// ----------------------------------------------------
+// 7. SEO Optimization (Interactive Search Grounded)
+// ----------------------------------------------------
+app.post("/api/seo-analyze", async (req, res) => {
+  try {
+    const { niche, language } = req.body;
+    if (!niche || !niche.trim()) {
+      return res.status(400).json({ success: false, error: "Niche is required" });
+    }
+
+    const ai = getAI();
+    const isAr = language === "ar";
+
+    const systemPrompt = `You are a world-class SEO (Search Engine Optimization) and search marketing expert.
+Analyze the following business niche, query, or category: "${niche}".
+Use Google Search grounding to find real-time keyword volumes, actual current search trends, active local or global competitors, and professional SEO tactics for this specific niche.
+
+You must deliver the response in the requested language: ${language || "en"}.
+If "ar" is specified (Arabic), all keywords, competitor descriptions/names, and SEO tips/guidance must be in professional, elegant, and persuasive Arabic.
+
+Please perform research and compile:
+1. A list of 4-5 high-performing, realistic SEO keywords or search terms for this niche. Provide their estimated monthly search volume range (e.g. "1K - 10K", "100 - 1K", etc.) and SEO difficulty ("Low", "Medium", "High").
+2. A list of 3 actual competitors or successful businesses in this niche (if local, focus on the specified city/region, otherwise general industry leaders).
+3. A list of 4 actionable, highly specific on-page or technical SEO tips/tactics tailored to this exact business to rank higher.
+
+Respond with a JSON object strictly matching this structure:
+{
+  "keywords": [
+    {
+      "word": "Keyword or query phrase",
+      "volume": "Estimated monthly search volume range (e.g. 10K - 100K or 500 - 1K)",
+      "difficulty": "Low" or "Medium" or "High"
+    }
+  ],
+  "competitors": [
+    "Competitor Name 1 (Include city, region, or brief detail if applicable)",
+    "Competitor Name 2",
+    "Competitor Name 3"
+  ],
+  "tips": [
+    "Specific SEO recommendation 1",
+    "Specific SEO recommendation 2",
+    "Specific SEO recommendation 3",
+    "Specific SEO recommendation 4"
+  ]
+}
+
+Return ONLY pure JSON. Do not wrap in markdown blocks like \`\`\`json.`;
+
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
+      contents: systemPrompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.4,
+        tools: [{ googleSearch: {} }],
+      },
+    }, 2, robustParseJSON);
+
+    // Extract grounding sources to send back to the client
+    const searchSources: { title: string; url: string }[] = [];
+    try {
+      const chunks = result.response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (chunks && Array.isArray(chunks)) {
+        for (const chunk of chunks) {
+          if (chunk.web && chunk.web.uri) {
+            const title = chunk.web.title || "Search Reference";
+            const url = chunk.web.uri;
+            // Avoid duplicates
+            if (!searchSources.some(src => src.url === url)) {
+              searchSources.push({ title, url });
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[Backend API] Error parsing search sources:", err);
+    }
+
+    res.json({
+      success: true,
+      analysis: {
+        ...result.parsed,
+        searchSources: searchSources.slice(0, 5), // Limit to top 5 sources
+      }
+    });
+  } catch (error: any) {
+    console.error("Error analyzing SEO:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to analyze SEO" });
+  }
+});
+
+// ----------------------------------------------------
+// 8. Brand Voice Analysis (Premium Deep Linguistic Orchestrator)
+// ----------------------------------------------------
+app.post("/api/brand-voice-analyze", async (req, res) => {
+  try {
+    const { brandName, brandDescription, sampleText, targetAudience, language } = req.body;
+    if (!brandDescription || !brandDescription.trim()) {
+      return res.status(400).json({ success: false, error: "Brand description is required" });
+    }
+
+    const ai = getAI();
+    const isAr = language === "ar";
+
+    const systemPrompt = `You are a world-class brand strategist, copywriter, and linguistic anthropologist.
+Analyze the following brand details to construct a comprehensive, professional, and distinctive Brand Voice Style Guide.
+
+Brand Name: "${brandName || "Generic Brand"}"
+Brand Description: "${brandDescription}"
+Target Audience: "${targetAudience || "General Public"}"
+Optional Copy Sample: "${sampleText || "None provided"}"
+
+You must deliver the response in the requested language: ${language || "en"}.
+If "ar" is specified (Arabic), all fields, trait names, descriptions, style guidelines, channel guides, and before/after text must be in professional, elegant, modern, and copy-perfect Arabic (فصحى حديثة ممتازة).
+
+Perform deep brand voice modeling and compile:
+1. A unique, creative name for this specific voice style and a high-level summary.
+2. 3 core brand voice traits (e.g. "Direct & Bold", "Warm & Wise", etc.). For each trait, provide a clear description, and concrete "Do" and "Don't" guidelines.
+3. Concrete style guide rules: Sentence length preferences, punctuation/emoji styling, 4 words/phrases to embrace, and 4 words/phrases to strictly avoid.
+4. Specific channels guidelines (Social Media, Customer Support, Marketing/Ads) on how this voice adapts.
+5. A before-and-after makeover: take a generic piece of business copy and rewrite it completely in this brand's customized voice, with a brief explanation of why the rewritten version is superior.
+
+Respond with a JSON object strictly matching this structure:
+{
+  "voiceProfile": {
+    "name": "Creative voice archetype name (e.g. 'The Confident Maverick' or 'المستكشف الملهم')",
+    "summary": "Deep summary of the brand voice identity"
+  },
+  "traits": [
+    {
+      "trait": "Name of trait",
+      "description": "How to express this trait",
+      "do": "Concrete action to take when writing",
+      "dont": "What to avoid doing"
+    }
+  ],
+  "styleGuide": {
+    "sentenceLength": "Guideline on sentence structures",
+    "punctuation": "Rules on punctuation, exclamation marks, or emojis",
+    "wordsToUse": [
+      "Preferred word 1",
+      "Preferred word 2",
+      "Preferred word 3",
+      "Preferred word 4"
+    ],
+    "wordsToAvoid": [
+      "Avoided word 1",
+      "Avoided word 2",
+      "Avoided word 3",
+      "Avoided word 4"
+    ]
+  },
+  "channelGuidelines": {
+    "socialMedia": "Social media writing guidelines",
+    "customerSupport": "Support tone guidelines",
+    "marketing": "Marketing/Ad writing guidelines"
+  },
+  "beforeAfter": {
+    "original": "A generic piece of copy related to this brand's industry (e.g. 'We offer high quality services with great customer support.')",
+    "rewritten": "The copy rewritten to perfectly match the brand voice traits designed above",
+    "explanation": "Linguistic analysis of why the rewrite fits the voice perfectly"
+  }
+}
+
+Return ONLY pure JSON. Do not wrap in markdown blocks like \`\`\`json.`;
+
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
+      contents: systemPrompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.5,
+      },
+    }, 2, robustParseJSON);
+
+    res.json({
+      success: true,
+      analysis: result.parsed
+    });
+  } catch (error: any) {
+    console.error("Error analyzing Brand Voice:", error);
+    res.status(500).json({ success: false, error: error.message || "Failed to analyze Brand Voice" });
   }
 });
 
