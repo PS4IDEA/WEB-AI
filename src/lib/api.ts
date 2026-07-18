@@ -552,7 +552,12 @@ export async function fetchAPI(url: string, options: RequestInit = {}): Promise<
     try {
       return await runClientSideGemini(url, body);
     } catch (err: any) {
-      console.error('Client-side Gemini execution failed, attempting server fallback:', err);
+      if (err.message && err.message.includes("Unsupported client-side API endpoint")) {
+        console.log(`Endpoint ${url} not supported client-side, falling back to server...`);
+      } else {
+        console.error('Client-side Gemini execution failed:', err);
+        throw new Error(`Client-side API Error: ${err.message}. Please check your Gemini API Key.`);
+      }
     }
   }
 
