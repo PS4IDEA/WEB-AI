@@ -76,12 +76,12 @@ export default function CheckoutModal({
           if (data && data.clientId) {
             setPaypalClientId(data.clientId);
           } else {
-            setPaypalClientId('BAApjK5O926nOFXbBdISh_4fAeqLgwHYHJk6JEFfk4wE7HT6k-X_fAIkWqiLBbYMpsJLbRKe56MGchHQmw');
+            setPaypalClientId('AZ8fij04JWpaxAXqbNcJlU7Kr1ZLdS2T9cpgJeosyshG8C9dZTXPE2bkcbuw1Oyo9WjJjlo6qhVbrmlI');
           }
         })
         .catch(err => {
           console.error("Failed to load dynamic PayPal config:", err);
-          setPaypalClientId('BAApjK5O926nOFXbBdISh_4fAeqLgwHYHJk6JEFfk4wE7HT6k-X_fAIkWqiLBbYMpsJLbRKe56MGchHQmw');
+          setPaypalClientId('AZ8fij04JWpaxAXqbNcJlU7Kr1ZLdS2T9cpgJeosyshG8C9dZTXPE2bkcbuw1Oyo9WjJjlo6qhVbrmlI');
         });
     } else {
       setPaypalClientId('');
