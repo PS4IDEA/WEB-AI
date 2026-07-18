@@ -26,6 +26,111 @@ function cleanJSON(text: string): string {
   return cleaned;
 }
 
+function repairTruncatedJSON(jsonStr: string): string {
+  let cleaned = jsonStr.trim();
+  
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (err) {
+    // Continue to repair
+  }
+
+  let inString = false;
+  let isEscaped = false;
+  const stack: string[] = [];
+  let repaired = "";
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (isEscaped) {
+      repaired += char;
+      isEscaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      isEscaped = true;
+      repaired += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      repaired += char;
+      continue;
+    }
+
+    if (inString) {
+      if (char === '\n') {
+        repaired += '\\n';
+      } else if (char === '\r') {
+        repaired += '\\r';
+      } else if (char === '\t') {
+        repaired += '\\t';
+      } else {
+        repaired += char;
+      }
+      continue;
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push(char);
+      repaired += char;
+    } else if (char === '}') {
+      if (stack[stack.length - 1] === '{') {
+        stack.pop();
+        repaired += char;
+      }
+    } else if (char === ']') {
+      if (stack[stack.length - 1] === '[') {
+        stack.pop();
+        repaired += char;
+      }
+    } else {
+      repaired += char;
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+
+  let temp = repaired.trim();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    temp = temp.trim();
+    
+    if (temp.endsWith(',')) {
+      temp = temp.slice(0, -1).trim();
+      changed = true;
+    }
+    
+    const trailingColonMatch = temp.match(/:\s*$/);
+    if (trailingColonMatch) {
+      temp = temp.slice(0, -trailingColonMatch[0].length).trim();
+      const trailingKeyMatch = temp.match(/"[^"]*"\s*$/);
+      if (trailingKeyMatch) {
+        temp = temp.slice(0, -trailingKeyMatch[0].length).trim();
+      }
+      changed = true;
+    }
+  }
+
+  const reverseStack = [...stack].reverse();
+  for (const openChar of reverseStack) {
+    if (openChar === '{') {
+      temp += '}';
+    } else if (openChar === '[') {
+      temp += ']';
+    }
+  }
+
+  return temp;
+}
+
 function robustParseJSON(text: string): any {
   let cleaned = text.trim();
   const match = /```(?:json)?\s*([\s\S]*?)\s*```/gi.exec(cleaned);
@@ -49,7 +154,7 @@ function robustParseJSON(text: string): any {
   try {
     return JSON.parse(cleaned);
   } catch (e) {
-    console.warn("[Client API] Standard JSON.parse failed. Applying advanced sanitization...");
+    console.log("[Client API] Standard JSON parse did not match perfectly. Applying advanced sanitization...");
     let depth = 0;
     let inString = false;
     let escapeActive = false;
@@ -108,20 +213,27 @@ function robustParseJSON(text: string): any {
       try {
         return JSON.parse(sanitized);
       } catch (finalError) {
-        console.error("[Client API] Advanced sanitization also failed to parse JSON.", finalError);
-        throw e;
+        console.log("[Client API] Advanced sanitization did not resolve perfectly. Trying auto-repair on truncated JSON...");
       }
     }
     
-    throw e;
+    // Fall back to auto-repairing the truncated/incomplete JSON
+    try {
+      console.log("[Client API] Running intelligent truncated JSON auto-repair...");
+      const repaired = repairTruncatedJSON(cleaned);
+      return JSON.parse(repaired);
+    } catch (repairErr: any) {
+      console.log("[Client API] Truncated JSON auto-repair did not resolve.", repairErr?.message || repairErr);
+      throw e;
+    }
   }
 }
 
 // Client-side helper to try multiple Gemini models in sequence with exponential retry
 async function generateClientContentWithRetry(ai: any, systemPrompt: string, config: any = {}): Promise<any> {
   const modelsToTry = [
-    "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
     "gemini-flash-latest"
   ];
   let lastError: any = null;
@@ -465,9 +577,9 @@ export async function fetchAPI(url: string, options: RequestInit = {}): Promise<
         if (text.trim().startsWith('<!DOCTYPE') || text.includes('<html')) {
           const lang = (typeof window !== 'undefined' && localStorage.getItem('brandforge_language')) === 'ar' ? 'ar' : 'en';
           if (lang === 'ar') {
-            throw new Error("عذرا نقوم باصلاحات لسيرفرات الموقع ولن نقوم بخصم credits من رصيدك");
+            throw new Error("تنبيه: الخادم الخلفي غير متاح. إذا كنت تستخدم Render، يرجى التأكد من تكوين التطبيق كـ Web Service وتعيين مفاتيح البيئة (OPENROUTER_API_KEY) أو (GEMINI_API_KEY) في إعدادات البيئة هناك. لتشغيل التطبيق فوراً، يرجى الضغط على زر المفتاح 🔑 في شريط التنقل العلوي وإدخال مفتاح Gemini API الخاص بك.");
           } else {
-            throw new Error("Sorry, we are currently performing server maintenance. No credits will be deducted from your balance.");
+            throw new Error("Notice: The backend server is currently unavailable. If you are hosting on Render, please make sure you configured a 'Web Service' (not a Static Site) and set 'OPENROUTER_API_KEY' or 'GEMINI_API_KEY' in Render's Environment Variables. To run immediately, please click the Key 🔑 icon in the top navigation bar and enter your own Gemini API Key.");
           }
         }
       }
@@ -495,7 +607,7 @@ export async function fetchAPI(url: string, options: RequestInit = {}): Promise<
       console.warn(`[API Network Warning] Attempt ${attempt + 1}/${maxRetries + 1} to fetch ${url} failed:`, error);
       
       const errMsg = String(error.message || "");
-      if (errMsg.includes("maintenance") || errMsg.includes("اصلاحات") || errMsg.includes("API Error") || errMsg.includes("Quota") || errMsg.includes("Key")) {
+      if (errMsg.includes("maintenance") || errMsg.includes("اصلاحات") || errMsg.includes("API Error") || errMsg.includes("Quota") || errMsg.includes("Key") || errMsg.includes("Notice") || errMsg.includes("تنبيه")) {
         throw error;
       }
 

@@ -7,7 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
@@ -55,6 +55,111 @@ function cleanJSON(text: string): string {
   return cleaned;
 }
 
+function repairTruncatedJSON(jsonStr: string): string {
+  let cleaned = jsonStr.trim();
+  
+  try {
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (err) {
+    // Continue to repair
+  }
+
+  let inString = false;
+  let isEscaped = false;
+  const stack: string[] = [];
+  let repaired = "";
+
+  for (let i = 0; i < cleaned.length; i++) {
+    const char = cleaned[i];
+
+    if (isEscaped) {
+      repaired += char;
+      isEscaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      isEscaped = true;
+      repaired += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      repaired += char;
+      continue;
+    }
+
+    if (inString) {
+      if (char === '\n') {
+        repaired += '\\n';
+      } else if (char === '\r') {
+        repaired += '\\r';
+      } else if (char === '\t') {
+        repaired += '\\t';
+      } else {
+        repaired += char;
+      }
+      continue;
+    }
+
+    if (char === '{' || char === '[') {
+      stack.push(char);
+      repaired += char;
+    } else if (char === '}') {
+      if (stack[stack.length - 1] === '{') {
+        stack.pop();
+        repaired += char;
+      }
+    } else if (char === ']') {
+      if (stack[stack.length - 1] === '[') {
+        stack.pop();
+        repaired += char;
+      }
+    } else {
+      repaired += char;
+    }
+  }
+
+  if (inString) {
+    repaired += '"';
+  }
+
+  let temp = repaired.trim();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    temp = temp.trim();
+    
+    if (temp.endsWith(',')) {
+      temp = temp.slice(0, -1).trim();
+      changed = true;
+    }
+    
+    const trailingColonMatch = temp.match(/:\s*$/);
+    if (trailingColonMatch) {
+      temp = temp.slice(0, -trailingColonMatch[0].length).trim();
+      const trailingKeyMatch = temp.match(/"[^"]*"\s*$/);
+      if (trailingKeyMatch) {
+        temp = temp.slice(0, -trailingKeyMatch[0].length).trim();
+      }
+      changed = true;
+    }
+  }
+
+  const reverseStack = [...stack].reverse();
+  for (const openChar of reverseStack) {
+    if (openChar === '{') {
+      temp += '}';
+    } else if (openChar === '[') {
+      temp += ']';
+    }
+  }
+
+  return temp;
+}
+
 function robustParseJSON(text: string): any {
   let cleaned = text.trim();
   const match = /```(?:json)?\s*([\s\S]*?)\s*```/gi.exec(cleaned);
@@ -78,7 +183,7 @@ function robustParseJSON(text: string): any {
   try {
     return JSON.parse(cleaned);
   } catch (e) {
-    console.warn("[Backend API] Standard JSON.parse failed. Applying advanced sanitization...");
+    console.log("[Backend API] Standard JSON parse did not match perfectly. Applying advanced sanitization...");
     let depth = 0;
     let inString = false;
     let escapeActive = false;
@@ -137,12 +242,19 @@ function robustParseJSON(text: string): any {
       try {
         return JSON.parse(sanitized);
       } catch (finalError) {
-        console.error("[Backend API] Advanced sanitization also failed to parse JSON.", finalError);
-        throw e;
+        console.log("[Backend API] Advanced sanitization did not resolve perfectly. Trying auto-repair on truncated JSON...");
       }
     }
     
-    throw e;
+    // Fall back to auto-repairing the truncated/incomplete JSON
+    try {
+      console.log("[Backend API] Running intelligent truncated JSON auto-repair...");
+      const repaired = repairTruncatedJSON(cleaned);
+      return JSON.parse(repaired);
+    } catch (repairErr: any) {
+      console.log("[Backend API] Truncated JSON auto-repair did not resolve.", repairErr?.message || repairErr);
+      throw e;
+    }
   }
 }
 
@@ -229,8 +341,8 @@ function generateLocalFallbackResponse(systemPrompt: string, jsonParser?: (text:
     const conceptMatch = systemPrompt.match(/representing the concept:\s*"(.*)"/i) || systemPrompt.match(/concept:\s*"(.*)"/i);
     const concept = conceptMatch ? conceptMatch[1] : "Business";
     
-    const primaryColor = systemPrompt.includes("luxury") ? "#D4AF37" : (systemPrompt.includes("technology") ? "#2563EB" : "#10B981");
-    const secondaryColor = systemPrompt.includes("luxury") ? "#1E293B" : (systemPrompt.includes("technology") ? "#3B82F6" : "#059669");
+    const styleMatch = systemPrompt.match(/Style requested:\s*([a-zA-Z0-9_]+)/i); const styleReq = styleMatch ? styleMatch[1].toLowerCase() : "minimalist"; const primaryColor = styleReq.includes("luxury") ? "#D4AF37" : (styleReq.includes("technology") ? "#2563EB" : "#10B981");
+    const secondaryColor = styleReq.includes("luxury") ? "#1E293B" : (styleReq.includes("technology") ? "#3B82F6" : "#059669");
 
     const svgString = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500' width='100%' height='100%'>
       <defs>
@@ -517,8 +629,11 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
   if (openRouterKey) {
     const orModel = process.env.OPENROUTER_MODEL || "google/gemini-2.5-flash";
     console.log(`[Backend API] OpenRouter key is present. Trying generation with OpenRouter using model ${orModel}`);
+    
+    const initialMaxTokens = params.config?.maxOutputTokens ?? 1200; // default to 1200 to conserve credits and fit balance
+    
     try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      let response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${openRouterKey}`,
@@ -535,14 +650,50 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
             }
           ],
           temperature: params.config?.temperature ?? 0.3,
-          max_tokens: params.config?.maxOutputTokens ?? 2000,
+          max_tokens: initialMaxTokens,
           response_format: params.config?.responseMimeType === "application/json" ? { type: "json_object" } : undefined
         })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`OpenRouter API status ${response.status}: ${errorText}`);
+        const status = response.status;
+        
+        if (status === 402) {
+          if (process.env.GEMINI_API_KEY) {
+             console.warn("[Backend API] OpenRouter 402 Insufficient credits. Falling back to Gemini.");
+             throw new Error("FALLBACK_TO_GEMINI");
+          } else {
+             console.warn("[Backend API] OpenRouter 402 Insufficient credits. Falling back to free model.");
+             response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+               method: "POST",
+               headers: {
+                 "Authorization": `Bearer ${openRouterKey}`,
+                 "Content-Type": "application/json",
+                 "HTTP-Referer": "https://ai.studio/build",
+                 "X-Title": "BrandCraft AI Studio Applet"
+               },
+               body: JSON.stringify({
+                 model: "google/gemma-4-26b-a4b-it:free",
+                 messages: [{ role: "user", content: params.contents || "" }],
+                 temperature: params.config?.temperature ?? 0.3,
+                 max_tokens: initialMaxTokens,
+                 response_format: params.config?.responseMimeType === "application/json" ? { type: "json_object" } : undefined
+               })
+             });
+             
+             if (!response.ok) {
+                 const errFree = await response.text();
+                 throw new Error("HARD_FAIL: OpenRouter API error: Insufficient credits. Please top up your account at openrouter.ai/settings/credits. (Free fallback also failed: " + errFree + ")");
+             }
+          }
+        }
+        
+        // If it's still not ok, check once more and throw
+        if (!response.ok) {
+          const finalErrorText = await response.text();
+          throw new Error(`OpenRouter API status ${response.status}: ${finalErrorText}`);
+        }
       }
 
       const responseData = await response.json();
@@ -576,7 +727,14 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
       console.log(`[Backend API] SUCCESS with OpenRouter model ${orModel}`);
       return { response: formattedResponse, parsed: null };
     } catch (openRouterErr: any) {
-      console.warn(`[Backend API] OpenRouter generation failed: ${openRouterErr.message}. Falling back to standard Gemini API client.`);
+      if (openRouterErr.message && openRouterErr.message.includes("HARD_FAIL")) {
+        throw new Error(openRouterErr.message.replace("HARD_FAIL: ", ""));
+      }
+      if (!ai) {
+        // If we don't have a fallback Gemini client, throw the OpenRouter error instead of returning mock data
+        throw openRouterErr;
+      }
+      console.log(`[Backend API] OpenRouter generation unavailable: ${openRouterErr.message}. Falling back to standard Gemini API client.`);
     }
   }
 
@@ -587,8 +745,12 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
 
   const modelsToTry = Array.from(new Set([
     params.model,
-    "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-2.5-pro",
+    "gemini-1.5-pro",
     "gemini-flash-latest"
   ].filter(Boolean)));
 
@@ -643,7 +805,7 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
 
         console.warn(`[Backend API] Attempt with model ${model} (attempt ${r + 1}/${maxRetries}) failed: ${message}`);
 
-        const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || apiErrorStatus === "INVALID_ARGUMENT" || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
+        const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
         if (isAuthError) {
           console.error(`[Backend API] Auth Error! Falling back to local responsive mock generator.`);
           return generateLocalFallbackResponse(params.contents || "", jsonParser);
@@ -655,7 +817,12 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
           break; // Skip retries for this model, try the next one
         }
 
-        const isModelNotFoundError = message.includes("not found") || message.includes("not supported") || message.includes("unsupported") || message.includes("model");
+        const isModelNotFoundError = message.includes("not found") || message.includes("not supported") || message.includes("unsupported") || message.includes("model") || message.includes("INVALID_ARGUMENT");
+        if (isModelNotFoundError) {
+          console.warn(`[Backend API] Model ${model} is not supported or not found. Skipping retries for this model.`);
+          break; // Skip retries for this model, try the next one
+        }
+
         const isJsonError = message.includes("JSON format invalid");
         if ((status === 400 || message.includes("INVALID_ARGUMENT")) && !isModelNotFoundError && !isJsonError) {
           console.error(`[Backend API] Bad Request (non-model error). Falling back to local responsive mock generator.`);
@@ -926,13 +1093,31 @@ app.get("/api/gemini-status", async (req, res) => {
     const ai = getAI();
     const startTime = Date.now();
     try {
-      await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: "Say OK",
-        config: {
-          maxOutputTokens: 2,
+      let checkError: any = null;
+      let healthCheckOk = false;
+      const modelsToCheck = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
+
+      for (const model of modelsToCheck) {
+        try {
+          await ai.models.generateContent({
+            model: model,
+            contents: "Say OK",
+            config: {
+              maxOutputTokens: 2,
+            }
+          });
+          healthCheckOk = true;
+          break;
+        } catch (err: any) {
+          checkError = err;
+          console.warn(`[Backend API] Health check model ${model} failed:`, err.message || err);
         }
-      });
+      }
+
+      if (!healthCheckOk) {
+        throw checkError || new Error("Failed all health check models");
+      }
+
       const latency = Date.now() - startTime;
       
       statusCache = {
@@ -963,7 +1148,7 @@ app.get("/api/gemini-status", async (req, res) => {
       }
 
       const isQuota = status === 429 || apiErrorCode === 429 || apiErrorStatus === "RESOURCE_EXHAUSTED" || messageLower.includes("quota") || messageLower.includes("rate limit") || messageLower.includes("limit exceeded") || messageLower.includes("exhausted");
-      const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || apiErrorStatus === "INVALID_ARGUMENT" || messageLower.includes("api_key_invalid") || messageLower.includes("key not valid") || messageLower.includes("invalid api key") || messageLower.includes("invalid_argument");
+      const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || messageLower.includes("api_key_invalid") || messageLower.includes("key not valid") || messageLower.includes("invalid api key");
 
       if (isQuota) {
         console.warn("[Backend API] Gemini status check detected Quota Exceeded (Key is valid but exhausted)");
@@ -1039,7 +1224,7 @@ You MUST respond with a JSON array of objects strictly matching this structure:
 Do not include any markdown markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1093,7 +1278,7 @@ Return a JSON object matching this structure:
 Do not include markdown markers like \`\`\`json. Return pure JSON object.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1129,7 +1314,7 @@ Return a JSON array of objects strictly matching this structure:
 Do not include markdown markers like \`\`\`json. Return pure JSON array.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1177,7 +1362,7 @@ Generate and return a JSON object matching this structure:
 Do not include markdown markers. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1245,7 +1430,7 @@ You MUST respond with a JSON object strictly matching this structure:
 Do not include any markdown block wrappers like \`\`\`json. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1288,7 +1473,7 @@ Example Output:
 Do not include markdown markers. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1339,7 +1524,7 @@ Respond with a JSON object strictly matching this structure:
 Do not include markdown tags. Return pure JSON.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1404,7 +1589,7 @@ Respond with a JSON object strictly matching this structure:
 Return ONLY pure JSON. Do not wrap in markdown blocks like \`\`\`json.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
@@ -1535,7 +1720,7 @@ Respond with a JSON object strictly matching this structure:
 Return ONLY pure JSON. Do not wrap in markdown blocks like \`\`\`json.`;
 
     const result = await generateContentWithRetry(ai, {
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: systemPrompt,
       config: {
         responseMimeType: "application/json",
