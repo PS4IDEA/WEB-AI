@@ -26,7 +26,10 @@ const replStr = `        if (status === 402) {
                },
                body: JSON.stringify({
                  model: "google/gemma-4-26b-a4b-it:free",
-                 messages: [{ role: "user", content: params.contents || "" }]
+                 messages: [{ role: "user", content: params.contents || "" }],
+                 temperature: params.config?.temperature ?? 0.3,
+                 max_tokens: initialMaxTokens,
+                 response_format: params.config?.responseMimeType === "application/json" ? { type: "json_object" } : undefined
                })
              });
              

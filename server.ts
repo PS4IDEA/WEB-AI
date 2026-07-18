@@ -7,7 +7,7 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = 3000;
 
 app.use(express.json());
 
@@ -1024,6 +1024,17 @@ app.post("/api/send-email", async (req, res) => {
   } catch (outerErr: any) {
     console.error("Unhandled error in send-email api:", outerErr);
     return res.status(500).json({ success: false, error: outerErr.message || String(outerErr) });
+  }
+});
+
+// PayPal runtime client configuration endpoint to retrieve client-side PayPal credentials securely at runtime (avoiding Vite build-time static replacement issues)
+app.get("/api/config/paypal", (req, res) => {
+  try {
+    const clientId = process.env.VITE_PAYPAL_CLIENT_ID || 'AZ8fij04JWpaxAXqbNcJlU7Kr1ZLdS2T9cpgJeosyshG8C9dZTXPE2bkcbuw1Oyo9WjJjlo6qhVbrmlI';
+    const cleanedClientId = clientId.trim().replace(/^['"]|['"]$/g, '');
+    res.json({ clientId: cleanedClientId });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to fetch PayPal config" });
   }
 });
 

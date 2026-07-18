@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Lock, CheckCircle2, Loader2, ShieldCheck, Info, X, Wallet, Globe, ExternalLink } from 'lucide-react';
+import { CreditCard, Lock, CheckCircle2, Loader2, ShieldCheck, Info, X, Wallet, Globe, ExternalLink, AlertCircle } from 'lucide-react';
 import { Language } from '../types';
 
 declare global {
@@ -49,7 +49,9 @@ export default function CheckoutModal({
   const [paypalStep, setPaypalStep] = useState(0); // 0: idle, 1: login, 2: authenticating, 3: processing transaction
 
   // Real PayPal hosted button states
+  const [paypalClientId, setPaypalClientId] = useState<string>('');
   const [isPaypalScriptLoaded, setIsPaypalScriptLoaded] = useState(false);
+  const [paypalSdkError, setPaypalSdkError] = useState<string>('');
 
   // Status states
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,19 +61,59 @@ export default function CheckoutModal({
   const [paypalPaymentApproved, setPaypalPaymentApproved] = useState(false);
   const [manualActivateError, setManualActivateError] = useState('');
 
+  // Fetch dynamic PayPal client ID from localStorage or backend to ensure runtime keys are loaded
+  useEffect(() => {
+    if (isOpen && paymentMethod === 'paypal') {
+      const localClientId = localStorage.getItem('brandforge_paypal_client_id');
+      if (localClientId && localClientId.trim()) {
+        setPaypalClientId(localClientId.trim());
+        return;
+      }
+
+      fetch('/api/config/paypal')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.clientId) {
+            setPaypalClientId(data.clientId);
+          } else {
+            setPaypalClientId('BAApjK5O926nOFXbBdISh_4fAeqLgwHYHJk6JEFfk4wE7HT6k-X_fAIkWqiLBbYMpsJLbRKe56MGchHQmw');
+          }
+        })
+        .catch(err => {
+          console.error("Failed to load dynamic PayPal config:", err);
+          setPaypalClientId('BAApjK5O926nOFXbBdISh_4fAeqLgwHYHJk6JEFfk4wE7HT6k-X_fAIkWqiLBbYMpsJLbRKe56MGchHQmw');
+        });
+    } else {
+      setPaypalClientId('');
+      setIsPaypalScriptLoaded(false);
+    }
+  }, [isOpen, paymentMethod]);
+
   // Load real PayPal SDK for 100 credits ($3), 500 credits ($12), 1500 credits ($30), or 4000 credits ($60) options
   useEffect(() => {
-    if (isOpen && paymentMethod === 'paypal' && (price === 3 || price === 12 || price === 30 || price === 60)) {
-      // Check if script is already present
-      const existingScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
+    if (isOpen && paymentMethod === 'paypal' && paypalClientId && (price === 3 || price === 12 || price === 30 || price === 60)) {
+      const clientId = paypalClientId;
+      
+      // Check if script is already present with the same client-id
+      const existingScript = document.querySelector(`script[src*="client-id=${clientId}"]`);
       if (existingScript) {
         setIsPaypalScriptLoaded(true);
         return;
       }
 
+      // If there's an existing script with a different client-id, remove it first
+      const anyPaypalScript = document.querySelector('script[src*="paypal.com/sdk/js"]');
+      if (anyPaypalScript) {
+        anyPaypalScript.remove();
+        if (window.paypal) {
+          delete window.paypal;
+        }
+        setIsPaypalScriptLoaded(false);
+      }
+
       const script = document.createElement('script');
       // Using standard buttons instead of hosted buttons to hide the hardcoded item name/price
-      script.src = "https://www.paypal.com/sdk/js?client-id=BAApjK5O926nOFXbBdISh_4fAeqLgwHYHJk6JEFfk4wE7HT6k-X_fAIkWqiLBbYMpsJLbRKe56MGchHQmw&components=buttons&disable-funding=venmo&currency=USD";
+      script.src = `https://www.paypal.com/sdk/js?client-id=${clientId}&components=buttons&disable-funding=venmo&currency=USD`;
       script.async = true;
       script.onload = () => {
         setIsPaypalScriptLoaded(true);
@@ -81,7 +123,7 @@ export default function CheckoutModal({
       };
       document.body.appendChild(script);
     }
-  }, [isOpen, paymentMethod, price]);
+  }, [isOpen, paymentMethod, price, paypalClientId]);
 
   // Render the real PayPal Button when script is loaded and container is available
   useEffect(() => {
@@ -124,6 +166,7 @@ export default function CheckoutModal({
               },
               onError: (err: any) => {
                 console.error("PayPal checkout error:", err);
+                setPaypalSdkError(err?.toString() || "Authorization or Permission Error (403 NOT_AUTHORIZED)");
               }
             }).render("#paypal-container-XL9G7BFXFQMYJ");
           } catch (err) {
@@ -157,6 +200,7 @@ export default function CheckoutModal({
       setError('');
       setPaypalPaymentApproved(false);
       setManualActivateError('');
+      setPaypalSdkError('');
     }
   }, [isOpen, userDisplayName, userEmail, price]);
 
@@ -669,6 +713,43 @@ export default function CheckoutModal({
                         {manualActivateError && (
                           <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-xl text-[11px] text-center font-medium leading-relaxed max-w-sm mx-auto animate-fade-in shadow-sm">
                             ⚠️ {manualActivateError}
+                          </div>
+                        )}
+                        {paypalSdkError && (
+                          <div className="p-4 bg-rose-50 dark:bg-rose-950/15 border border-rose-200 dark:border-rose-900/40 rounded-2xl text-rose-700 dark:text-rose-400 text-xs text-left space-y-2 leading-relaxed animate-fade-in max-w-md mx-auto">
+                            <div className="font-bold flex items-center gap-2 text-rose-800 dark:text-rose-300">
+                              <AlertCircle className="w-4 h-4 shrink-0" />
+                              <span>
+                                {isAr 
+                                  ? 'إرشاد لحل مشكلة الدفع (403 NOT_AUTHORIZED)' 
+                                  : 'PayPal Gateway Alert (403 NOT_AUTHORIZED)'}
+                              </span>
+                            </div>
+                            <p>
+                              {isAr 
+                                ? 'يحدث هذا الخطأ غالباً عندما يكون الرمز المستخدم لا يملك الصلاحيات الكافية، أو بسبب عدم مطابقة بيئة الدفع (تجريبي Sandbox مقابل حقيقي Live).' 
+                                : 'This error usually means your Client ID lacks permissions or has an environment type mismatch (Sandbox buyer account on Live buttons or vice versa).'}
+                            </p>
+                            <div className="border-t border-rose-200/50 dark:border-rose-900/20 pt-2 space-y-1 text-[11px] text-rose-600 dark:text-rose-400/80">
+                              <p className="font-semibold">{isAr ? 'الخطوات الموصى بها للحل السريع:' : 'Recommended Solutions:'}</p>
+                              <ul className="list-disc list-inside space-y-1 pl-1">
+                                <li>
+                                  {isAr 
+                                    ? 'انتقل لتبويب "الفواتير" في لوحة التحكم لإضافة وحفظ مفتاح (Client ID) الصحيح الخاص بك.' 
+                                    : 'Go to your Dashboard "Billing" tab to enter and save your custom PayPal Client ID.'}
+                                </li>
+                                <li>
+                                  {isAr 
+                                    ? 'تأكد من تفعيل "Standard Checkout" في إعدادات التطبيق بموقع مطوري PayPal.' 
+                                    : 'Make sure standard checkouts are activated inside developer.paypal.com.'}
+                                </li>
+                                <li>
+                                  {isAr 
+                                    ? 'استخدم حساب Sandbox المخصص للشراء بدلاً من حساب PayPal الشخصي العادي عند تفعيل بيئة التجريب.' 
+                                    : 'Use the official Sandbox Buyer credentials when checking out in testing/development mode.'}
+                                </li>
+                              </ul>
+                            </div>
                           </div>
                         )}
                       </div>

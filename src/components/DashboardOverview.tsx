@@ -152,10 +152,11 @@ export default function DashboardOverview({
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<string | null>(null);
 
-  // Gemini API Key state
-  const [apiKeyInput, setApiKeyInput] = useState(getClientGeminiKey());
-  const [showKeyText, setShowKeyText] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'cleared'>('idle');
+  // PayPal config state
+  const [paypalKeyInput, setPaypalKeyInput] = useState(() => {
+    return localStorage.getItem('brandforge_paypal_client_id') || '';
+  });
+  const [paypalSaveStatus, setPaypalSaveStatus] = useState<'idle' | 'saved' | 'cleared'>('idle');
 
   // Saved Payment Methods state & handlers
   const [savedCards, setSavedCards] = useState<any[]>(() => {
@@ -1929,103 +1930,6 @@ export default function DashboardOverview({
       {/* F. BILLING TAB */}
       {activeTab === 'billing' && (
         <div className="space-y-6 animate-fade-in">
-          {/* Gemini API Key Integrated Section */}
-          <div className="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-950/60 rounded-2xl p-6 shadow-sm space-y-4 relative overflow-hidden">
-            {/* Elegant side accent line */}
-            <div className="absolute top-0 bottom-0 left-0 w-1 bg-indigo-500"></div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-50 dark:bg-indigo-950/60 p-2.5 rounded-xl text-indigo-600 dark:text-indigo-400">
-                  <Key className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-display font-bold text-slate-850 dark:text-white text-base flex items-center gap-2">
-                    {t.apiKeySettings}
-                    {isClientGeminiModeActive() && (
-                      <span className="text-[10px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 px-2 py-0.5 rounded-full font-bold">
-                        {language === 'ar' ? 'وضع التشغيل المباشر نشط' : 'Client Mode Active'}
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {language === 'ar'
-                      ? 'قم بدمج مفتاح Gemini API الخاص بك لتشغيل المولد مباشرة في متصفحك مجاناً وبلا حدود.'
-                      : 'Integrate your own Gemini API Key to run the branding generators directly in your browser completely for free.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Get key instruction link */}
-              <a
-                href="https://aistudio.google.com/"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold self-start sm:self-center"
-              >
-                <AlertCircle className="w-3.5 h-3.5" />
-                {t.getApiKeyLink}
-              </a>
-            </div>
-
-            <div className="pt-2 max-w-xl space-y-4">
-              <div className="relative">
-                <input
-                  type={showKeyText ? "text" : "password"}
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  placeholder={t.apiKeyPlaceholder}
-                  className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-850 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white pr-12 pl-4 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKeyText(!showKeyText)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                >
-                  {showKeyText ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {saveStatus === 'saved' && (
-                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 rounded-xl p-3 text-xs leading-relaxed animate-fade-in">
-                  {t.apiKeySaved}
-                </div>
-              )}
-
-              {saveStatus === 'cleared' && (
-                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 text-amber-700 dark:text-amber-400 rounded-xl p-3 text-xs leading-relaxed animate-fade-in">
-                  {t.apiKeyRemoved}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-1">
-                <button
-                  onClick={() => {
-                    setClientGeminiKey(apiKeyInput);
-                    setSaveStatus('saved');
-                  }}
-                  disabled={!apiKeyInput}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
-                >
-                  {t.apiKeySave}
-                </button>
-                
-                {isClientGeminiModeActive() && (
-                  <button
-                    onClick={() => {
-                      setClientGeminiKey('');
-                      setApiKeyInput('');
-                      setSaveStatus('cleared');
-                    }}
-                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
-                  >
-                    {t.apiKeyClear}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
           <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <h3 className="font-display font-bold text-slate-850 dark:text-white text-base">
@@ -2127,6 +2031,123 @@ export default function DashboardOverview({
                 {purchaseSuccess}
               </div>
             )}
+          </div>
+
+          {/* PayPal Configuration Settings Card */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="bg-[#0070ba]/10 p-2.5 rounded-xl text-[#0070ba]">
+                <Key className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-display font-bold text-slate-850 dark:text-white text-base">
+                  {language === 'ar' ? 'إعدادات بوابة دفع PayPal' : 'PayPal Payment Gateway Settings'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {language === 'ar'
+                    ? 'تخصيص الرمز التعريفي (Client ID) الحقيقي الخاص بك لتلقي المدفوعات في متجرك.'
+                    : 'Configure your active PayPal Client ID to route payments directly to your PayPal account.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-left">
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {language === 'ar' ? 'معرف العميل لباي بال (PayPal Client ID)' : 'PayPal Client ID'}
+                </label>
+                <input
+                  type="text"
+                  value={paypalKeyInput}
+                  onChange={(e) => {
+                    setPaypalKeyInput(e.target.value);
+                    setPaypalSaveStatus('idle');
+                  }}
+                  placeholder={
+                    language === 'ar'
+                      ? 'أدخل معرف العميل الحقيقي (مثال: Client ID يبدأ بـ Ad أو Af...)'
+                      : 'Enter your real PayPal Client ID (e.g., starting with Ad or Af...)'
+                  }
+                  className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-xs font-mono focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* Informative alert explaining 403 errors */}
+              <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-950/40 rounded-xl p-4 text-xs space-y-2 leading-relaxed text-slate-600 dark:text-slate-400">
+                <div className="flex gap-2 font-bold text-indigo-600 dark:text-indigo-400 items-start">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    {language === 'ar'
+                      ? 'دليل استكشاف الأخطاء وإصلاحها (خطأ 403 NOT_AUTHORIZED):'
+                      : 'Troubleshooting Authorization Errors (403 NOT_AUTHORIZED):'}
+                  </span>
+                </div>
+                <p>
+                  {language === 'ar'
+                    ? 'إذا ظهرت لك مشكلة عدم تفعيل أو فشل الاتصال ببوابة الدفع، فهذا يعني غالباً أحد الأمرين:'
+                    : 'If the PayPal buttons throw a 403 authorization error, it is almost always due to:'}
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-slate-500 dark:text-slate-400 pl-1">
+                  <li>
+                    <strong>{language === 'ar' ? 'بيئة غير متطابقة: ' : 'Environment Mismatch: '}</strong>
+                    {language === 'ar'
+                      ? 'محاولة الدفع بحساب Sandbox (تجريبي) بينما المفتاح حقيقي (Live)، أو العكس.'
+                      : 'Trying to pay with a Sandbox buyer account while using a Live Client ID (or vice versa).'}
+                  </li>
+                  <li>
+                    <strong>{language === 'ar' ? 'تفعيل ميزة المدفوعات القياسية: ' : 'Enable Standard Checkout: '}</strong>
+                    {language === 'ar'
+                      ? 'يجب تفعيل خيار (Accept Payments) و (Standard Checkout) لتطبيقك في لوحة مطوري باي بال.'
+                      : 'Ensure "Accept Payments" and "Standard Checkout" features are fully enabled for your App in developer.paypal.com.'}
+                  </li>
+                  <li>
+                    <strong>{language === 'ar' ? 'دعم العملة: ' : 'USD Currency: '}</strong>
+                    {language === 'ar'
+                      ? 'يجب أن يدعم حساب باي بال التجاري الخاص بك استقبال عملة الدولار الأمريكي (USD).'
+                      : 'Your merchant account must support receiving payments in USD.'}
+                  </li>
+                </ul>
+              </div>
+
+              {paypalSaveStatus === 'saved' && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 text-emerald-700 dark:text-emerald-400 rounded-xl p-3 text-xs leading-relaxed animate-fade-in">
+                  {language === 'ar'
+                    ? 'تم حفظ المفتاح بنجاح! سيتم استخدام الرمز التعريفي الحقيقي الخاص بك للمدفوعات الآن.'
+                    : 'PayPal Client ID saved successfully! The gateway is now updated.'}
+                </div>
+              )}
+
+              {paypalSaveStatus === 'cleared' && (
+                <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 text-amber-700 dark:text-amber-400 rounded-xl p-3 text-xs leading-relaxed animate-fade-in">
+                  {language === 'ar' ? 'تمت إزالة الرمز المخصص. تم تفعيل الرمز الافتراضي.' : 'Custom Client ID removed. Using default Sandbox credentials.'}
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                {localStorage.getItem('brandforge_paypal_client_id') && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('brandforge_paypal_client_id');
+                      setPaypalKeyInput('');
+                      setPaypalSaveStatus('cleared');
+                    }}
+                    className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
+                  >
+                    {language === 'ar' ? 'حذف المفتاح' : 'Clear Custom ID'}
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    localStorage.setItem('brandforge_paypal_client_id', paypalKeyInput.trim());
+                    setPaypalSaveStatus('saved');
+                  }}
+                  disabled={!paypalKeyInput.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition cursor-pointer"
+                >
+                  {language === 'ar' ? 'حفظ الرمز' : 'Save PayPal ID'}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Saved Payment Methods & Card Management section */}
