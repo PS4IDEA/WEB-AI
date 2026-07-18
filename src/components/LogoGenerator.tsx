@@ -82,9 +82,12 @@ export default function LogoGenerator({
     setLogoResult(null);
     setSaved(false);
 
+    const requiredCredits = enable3D ? 3 : 1;
     const userCredits = user && typeof user.credits === 'number' && !isNaN(user.credits) ? user.credits : 0;
-    if (userCredits < 3) {
-      setError(language === 'en' ? 'Insufficient credits! Please upgrade your plan or purchase credits.' : 'رصيدك غير كافٍ! يرجى ترقية باقتك أو شراء رصيد إضافي.');
+    if (userCredits < requiredCredits) {
+      setError(language === 'en' 
+        ? `Insufficient credits! This operation requires ${requiredCredits} credits.` 
+        : `رصيدك غير كافٍ! هذه العملية تتطلب ${requiredCredits} من الأرصدة.`);
       setLoading(false);
       return;
     }
@@ -100,7 +103,7 @@ export default function LogoGenerator({
       });
 
       if (resJson.success) {
-        onDeductCredits(3);
+        onDeductCredits(requiredCredits);
         setLogoResult(resJson.data);
         sessionCache.current[cacheKey] = resJson.data;
       } else {
@@ -220,7 +223,7 @@ export default function LogoGenerator({
               {t.logoGen}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {language === 'ar' ? 'يولد شعار متجهي حديث ومخصص بالكامل بصيغة SVG فائقة الدقة (يكلف 3 أرصدة)' : 'Generates a fully customized modern vector logo as high-resolution crisp SVG markup (Costs 3 credits)'}
+              {language === 'ar' ? 'يولد شعار متجهي حديث ومخصص بالكامل بصيغة SVG فائقة الدقة (يكلف رصيد واحد أو 3 أرصدة للـ 3D)' : 'Generates a fully customized modern vector logo as high-resolution crisp SVG (Costs 1 credit, or 3 credits for 3D)'}
             </p>
           </div>
         </div>
@@ -302,7 +305,7 @@ export default function LogoGenerator({
           <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span>{language === 'ar' ? 'التكلفة: 3 رصيد' : 'Credits Cost: 3 credits'}</span>
+              <span>{language === 'ar' ? `التكلفة: ${enable3D ? '3 أرصدة' : 'رصيد واحد (1)'}` : `Credits Cost: ${enable3D ? '3 credits' : '1 credit'}`}</span>
             </div>
 
             <button

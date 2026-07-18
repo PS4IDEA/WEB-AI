@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Language, Page, BlogArticle, SupportTicket } from '../types';
-import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download, RefreshCw, X, Lock, CreditCard } from 'lucide-react';
+import { Mail, HelpCircle, FileText, ChevronRight, Check, Star, ShieldCheck, Award, MessageSquare, Coins, Zap, Sparkles, Globe, Layout, Download, RefreshCw, X, Lock, CreditCard, Volume2, Briefcase, Search, Box } from 'lucide-react';
 import CheckoutModal from './CheckoutModal';
 
 interface BlogFAQPagesProps {
@@ -139,26 +139,39 @@ export default function BlogFAQPages({
             {isAr ? 'ينسق BrandForge AI مولدات عصبية متخصصة لبناء هويات بصرية دقيقة وعالية الدقة.' : 'BrandForge AI coordinates specialized neural generators to construct pristine, high-resolution visual identities.'}
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { title: t.nameGen, desc: isAr ? 'ينشئ ما يصل إلى 10 نماذج أسماء تجارية مطابقة لمعايير الصناعة والبلدان المستهدفة.' : 'Generates up to 10 contextual business name models matching standard industry parameters and target countries.', icon: <Award className="w-6 h-6" /> },
-            { title: t.logoGen, desc: isAr ? 'يصمم شعارات دقيقة بصيغة XML/SVG مباشرة، قابلة للتنزيل مع أنماط متجاوبة وتخطيطات شفافة.' : 'Crafts real vector-precision XML/SVG logo marks directly, fully downloadable with responsive styles and optional transparent layouts.', icon: <Star className="w-6 h-6" /> },
-            { title: t.sloganGen, desc: isAr ? 'يخلق خيارات متعددة لشعارات تسويقية لا تُنسى وعبارات جذابة تتماشى مع النبرة العاطفية للعلامة.' : 'Creates multiple options of memorable marketing slogans and catchy taglines aligned with emotional tone profiles.', icon: <MessageSquare className="w-6 h-6" /> },
-            { title: t.brandKit, desc: isAr ? 'ينشئ طباعة كاملة ولوحات ألوان سداسية عشرية مخصصة تعكس النمط الأساسي لعلامتك التجارية.' : 'Generates full typography and custom hexadecimal color swatches reflecting your brand archetype.', icon: <PaletteIcon className="w-6 h-6" /> },
-            { title: isAr ? 'التحقق من توفر النطاق (Domain)' : 'Domain Availability Check', desc: isAr ? 'تحقق على الفور من توفر أسماء النطاقات المقترحة مباشرة ضمن نتائج التوليد.' : 'Instantly check the availability of suggested domain names right within the generation results.', icon: <Globe className="w-6 h-6" /> },
-            { title: isAr ? 'أصول منصات التواصل الاجتماعي' : 'Social Media Kit Generation', desc: isAr ? 'قم بإنشاء حزمة متناسقة لمنصات التواصل الاجتماعي تتضمن الصور الشخصية وصور الغلاف وقوالب المنشورات.' : 'Generate a cohesive social media branding kit including profile pictures, cover photos, and post templates.', icon: <Layout className="w-6 h-6" /> },
+            { title: isAr ? 'تصميم شعار احترافي ثلاثي الأبعاد وعادي' : 'Premium 3D & Flat Logo Maker', desc: isAr ? 'صمم شعارًا لعلامتك التجارية بالكامل، واختر بين مظهر متجهي مسطح أو مجسم ثلاثي الأبعاد بارز بلمسات إضاءة سينمائية.' : 'Generate infinite precision brand logos with standard flat vector profiles or breathtaking volumetric 3D extruded depths.', icon: <Box className="w-6 h-6" />, targetPage: 'logo-maker' as Page },
+            { title: isAr ? 'تحسين سيو ومحركات البحث الذكي' : 'AI SEO Keywords & Optimization', desc: isAr ? 'حلل الكلمات المفتاحية لمشروعك، وأنشئ ميتادات كاملة وتوصيات سيو مخصصة لعلامتك التجارية لتتصدر بحث جوجل.' : 'Analyze target keywords, generate meta-tags, and get custom recommendations to rank on top of Google Search Console.', icon: <Search className="w-6 h-6" />, targetPage: 'seo' as Page },
+            { title: isAr ? 'تصميم بطاقات العمل الاحترافية' : 'Premium Business Card Maker', desc: isAr ? 'صمم بطاقات عمل وهوية ورقية احترافية لعلامتك التجارية مع خيارات متنوعة جاهزة للتنزيل والطباعة فوراً.' : 'Design professional and printable business cards and corporate stationery for your team instantly.', icon: <Briefcase className="w-6 h-6" />, targetPage: 'business-cards' as Page },
+            { title: t.nameGen, desc: isAr ? 'ينشئ ما يصل إلى 10 نماذج أسماء تجارية مطابقة لمعايير الصناعة والبلدان المستهدفة.' : 'Generates up to 10 contextual business name models matching standard industry parameters and target countries.', icon: <Award className="w-6 h-6" />, targetPage: 'dashboard' as Page },
+            { title: t.logoGen, desc: isAr ? 'يصمم شعارات دقيقة بصيغة XML/SVG مباشرة، قابلة للتنزيل مع أنماط متجاوبة وتخطيطات شفافة.' : 'Crafts real vector-precision XML/SVG logo marks directly, fully downloadable with responsive styles and optional transparent layouts.', icon: <Star className="w-6 h-6" />, targetPage: 'dashboard' as Page },
+            { title: t.sloganGen, desc: isAr ? 'يخلق خيارات متعددة لشعارات تسويقية لا تُنسى وعبارات جذابة تتماشى مع النبرة العاطفية للعلامة.' : 'Creates multiple options of memorable marketing slogans and catchy taglines aligned with emotional tone profiles.', icon: <MessageSquare className="w-6 h-6" />, targetPage: 'dashboard' as Page },
+            { title: t.brandKit, desc: isAr ? 'ينشئ طباعة كاملة ولوحات ألوان سداسية عشرية مخصصة تعكس النمط الأساسي لعلامتك التجارية.' : 'Generates full typography and custom hexadecimal color swatches reflecting your brand archetype.', icon: <PaletteIcon className="w-6 h-6" />, targetPage: 'dashboard' as Page },
+            { title: isAr ? 'أصول منصات التواصل الاجتماعي' : 'Social Media Kit Generation', desc: isAr ? 'قم بإنشاء حزمة متناسقة لمنصات التواصل الاجتماعي تتضمن الصور الشخصية وصور الغلاف وقوالب المنشورات.' : 'Generate a cohesive social media branding kit including profile pictures, cover photos, and post templates.', icon: <Layout className="w-6 h-6" />, targetPage: 'social-media' as Page },
             { title: isAr ? 'تصدير الحزمة إلى PDF' : 'Brand Kit PDF Export', desc: isAr ? 'قم بتصدير إرشادات الهوية البصرية لعلامتك التجارية بشكل احترافي مباشرة إلى ملف PDF.' : 'Export your complete, professionally formatted brand identity guidelines directly to PDF.', icon: <Download className="w-6 h-6" /> },
-            { title: isAr ? 'منشئ لوحات الألوان التفاعلي' : 'Interactive Color Palette Generator', desc: isAr ? 'صمم لوحات ألوان هويتك التجارية التفاعلية بالكامل، اقفل الألوان المفضلة، عاينها مباشرة على قوالب واجهات حية، أو ولد ألوان ملهمة بمساعدة الذكاء الاصطناعي.' : 'Design interactive color schemes. Lock/unlock favorite swatches, fine-tune using precise HSL sliders, generate thematic palettes with AI, and view real-time live mockup UI previews.', icon: <Sparkles className="w-6 h-6" /> },
+            { title: isAr ? 'منشئ لوحات الألوان التفاعلي' : 'Interactive Color Palette Generator', desc: isAr ? 'صمم لوحات ألوان هويتك التجارية التفاعلية بالكامل، اقفل الألوان المفضلة، عاينها مباشرة على قوالب واجهات حية، أو ولد ألوان ملهمة بمساعدة الذكاء الاصطناعي.' : 'Design interactive color schemes. Lock/unlock favorite swatches, fine-tune using precise HSL sliders, generate thematic palettes with AI, and view real-time live mockup UI previews.', icon: <Sparkles className="w-6 h-6" />, targetPage: 'dashboard' as Page },
             { title: isAr ? 'مشاركة الأصول بروابط عامة' : 'Public Brand Asset Sharing', desc: isAr ? 'احصل على روابط ويب عامة فورية لمشاركة الهويات البصرية والشعارات والتصميمات مع العملاء وأعضاء فريق العمل بسهولة.' : 'Generate instant, shareable public showcase web links for your branding guidelines and logo assets to present directly to clients or team members.', icon: <Globe className="w-6 h-6" /> }
           ].map((item, idx) => (
-            <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl flex gap-4 items-start hover:shadow-md transition">
-              <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3 rounded-2xl text-indigo-600 dark:text-indigo-400">
+            <div 
+              key={idx} 
+              onClick={() => item.targetPage && setCurrentPage(item.targetPage)}
+              className={`bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 sm:p-8 rounded-3xl flex gap-4 items-start hover:shadow-lg transition-all duration-300 ${item.targetPage ? 'cursor-pointer hover:border-indigo-500/30 dark:hover:border-indigo-500/30 hover:-translate-y-1 group' : ''}`}
+            >
+              <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3 rounded-2xl text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
                 {item.icon}
               </div>
-              <div className="space-y-2">
-                <h3 className="font-display font-bold text-slate-900 dark:text-white text-lg">
-                  {item.title}
-                </h3>
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-display font-bold text-slate-900 dark:text-white text-base sm:text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    {item.title}
+                  </h3>
+                  {item.targetPage && (
+                    <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      {isAr ? 'جرب الآن ↗' : 'Try Now ↗'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   {item.desc}
                 </p>

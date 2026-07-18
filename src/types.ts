@@ -13,9 +13,8 @@ export type Page =
   | 'admin'
   | 'business-cards'
   | 'social-media'
-  | 'domain-checker'
   | 'seo'
-  | 'brand-voice';
+  | 'logo-maker';
 
 export type DashboardTab = 
   | 'overview' 

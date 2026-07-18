@@ -363,6 +363,91 @@ function generateLocalFallbackResponse(systemPrompt: string, jsonParser?: (text:
         : "We strongly advise launching with Option 1 due to its modern phonetics, exceptional adaptability, and premium character."
     };
   }
+  // 9. Brand Voice & Linguistic Architect
+  else if (systemPrompt.includes("Brand Voice Style Guide") || systemPrompt.includes("brand-voice-analyze") || systemPrompt.includes("voiceProfile")) {
+    parsedData = {
+      voiceProfile: {
+        name: isAr ? "المستكشف الملهم" : "The Visionary Catalyst",
+        summary: isAr 
+          ? "هوية لغوية تجمع بين الابتكار والشغف، تتحدث بثقة وإيجابية لتلهم الجمهور وتدفعه نحو التميز والتغيير المستمر."
+          : "A brand voice centered around pioneering growth and progressive innovation, designed to build trust through actionable wisdom and clarity."
+      },
+      traits: [
+        {
+          trait: isAr ? "مبتكر وملهم" : "Visionary & Bold",
+          description: isAr 
+            ? "التحدث عن المستقبل بشغف ووضوح وتبسيط المفاهيم المعقدة."
+            : "Focusing on the future with passion, making complex ideas simple and exciting.",
+          do: isAr 
+            ? "استخدم لغة قوية وديناميكية تعبر عن التغيير والفرص الجديدة."
+            : "Use active verbs and strong verbs that convey dynamic progress and breakthroughs.",
+          dont: isAr 
+            ? "تجنب المصطلحات المعقدة للغاية أو الأسلوب البيروقراطي القديم."
+            : "Avoid overly dense academic terms, corporate double-speak, or outdated buzzwords."
+        },
+        {
+          trait: isAr ? "ودود ومقرب" : "Accessible & Empathetic",
+          description: isAr 
+            ? "بناء علاقة ثقة قوية ومخاطبة العميل كصديق ومستشار مخلص."
+            : "Building authentic trust and addressing users as peers and companions in growth.",
+          do: isAr 
+            ? "استخدم ضمائر المخاطب المباشرة وتحدث بعفوية مهذبة."
+            : "Use direct conversational tone and address the reader directly with warmth.",
+          dont: isAr 
+            ? "تجنب الجمل الطويلة والجامدة أو صيغ المبالغة غير الواقعية."
+            : "Avoid stiff passive voice or exaggerated marketing claims that feel artificial."
+        },
+        {
+          trait: isAr ? "موجه نحو النتائج" : "Results-Oriented & Crisp",
+          description: isAr 
+            ? "التركيز على القيمة الفعلية وتأثير الحلول بشكل عملي ومقنع."
+            : "Stressing practical utility, real-world value, and undeniable impact clearly.",
+          do: isAr 
+            ? "ركز على الفوائد الملموسة وقدم نصائح وإرشادات فورية قابلة للتطبيق."
+            : "Highlight tangible rewards, metrics, and actionable immediate steps.",
+          dont: isAr 
+            ? "تجنب الوعود الغامضة والحديث المطول بدون أدلة واضحة."
+            : "Avoid vague promises, excessive hyperbole, or fluff paragraphs."
+        }
+      ],
+      styleGuide: {
+        sentenceLength: isAr 
+          ? "جمل قصيرة ومكثفة ومحفزة. لا تتجاوز الجملة 15 كلمة لضمان سهولة القراءة."
+          : "Crisp and rhythmic sentences ranging from 8 to 15 words. Keep it highly punchy.",
+        punctuation: isAr 
+          ? "استخدام ذكي لنقاط النهاية وعلامات التعجب لإبراز الحماس، مع رموز تعبيرية حديثة وغير مفرطة (مثل 🌟, ✨, 🚀)."
+          : "Clean usage of periods, exclamation marks sparingly for enthusiasm, and tasteful emojis (e.g., 🚀, 🌟, ✨).",
+        wordsToUse: isAr 
+          ? ["ابتكار", "نمو ملموس", "شغف", "مستقبل"]
+          : ["breakthrough", "clarity", "empower", "growth"],
+        wordsToAvoid: isAr 
+          ? ["تقليدي", "ربما نساعدك", "حلول متكاملة للغاية", "بيروقراطية"]
+          : ["stale", "potentially", "synergy", "utilize"]
+      },
+      channelGuidelines: {
+        socialMedia: isAr 
+          ? "نبرة ودودة وحيوية جداً، استخدام ممتاز للمساحات البيضاء والـ Bullet points والرموز التعبيرية لجذب الانتباه بسرعة."
+          : "High energy, conversational, structured with bullet points and visual separation for quick readability.",
+        customerSupport: isAr 
+          ? "نبرة ترحيبية وهادئة ومحترفة، تبدأ بحل المشكلة فوراً مع إظهار تفهم كامل وتقديم دعم متكامل."
+          : "Calm, deeply empathetic, highly reassuring, starting with direct resolution steps and closing warmly.",
+        marketing: isAr 
+          ? "نبرة ملهمة تركز على النتائج والتحول الذي يحصل عليه العميل، دعوة واضحة ومقنعة لاتخاذ إجراء (CTA)."
+          : "Inspiring, result-driven copy emphasizing customer transformation with an undeniable Call to Action (CTA)."
+      },
+      beforeAfter: {
+        original: isAr 
+          ? "نحن نقدم خدمات ممتازة للعملاء لتطوير مشاريعهم بطرق جيدة وسريعة."
+          : "We offer high quality services with great customer support to help businesses grow.",
+        rewritten: isAr 
+          ? "اصنع مستقبلاً استثنائياً لمشروعك اليوم بلمسة ذكية تجمع السرعة والدعم المستمر."
+          : "Unlock rapid growth and navigate your market confidently with 24/7 dedicated support designed to empower you.",
+        explanation: isAr 
+          ? "تم استبدال الكلمات المستهلكة (مثل 'ممتازة' و'جيدة') بلغة حيوية ومباشرة تعبر عن التأثير الحقيقي والسرعة والشغف."
+          : "Replaced passive, empty phrases with dynamic action verbs and emphasized concrete customer benefits and empowerment."
+      }
+    };
+  }
   // 8. SEO Optimization
   else {
     const keywords = isAr ? [
@@ -450,7 +535,7 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
             }
           ],
           temperature: params.config?.temperature ?? 0.3,
-          max_tokens: params.config?.maxOutputTokens ?? 4000,
+          max_tokens: params.config?.maxOutputTokens ?? 2000,
           response_format: params.config?.responseMimeType === "application/json" ? { type: "json_object" } : undefined
         })
       });
@@ -560,8 +645,8 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
 
         const isAuthError = status === 401 || status === 403 || apiErrorCode === 401 || apiErrorCode === 403 || apiErrorStatus === "INVALID_ARGUMENT" || message.includes("API_KEY_INVALID") || message.includes("API key not valid") || message.includes("invalid API key");
         if (isAuthError) {
-          console.error(`[Backend API] Auth Error! Aborting fallback loop.`);
-          throw err;
+          console.error(`[Backend API] Auth Error! Falling back to local responsive mock generator.`);
+          return generateLocalFallbackResponse(params.contents || "", jsonParser);
         }
 
         const isQuotaError = status === 429 || status === 503 || apiErrorCode === 429 || apiErrorCode === 503 || apiErrorStatus === "RESOURCE_EXHAUSTED" || message.includes("Quota") || message.includes("quota") || message.includes("UNAVAILABLE") || message.includes("high demand");
@@ -573,8 +658,8 @@ async function generateContentWithRetry(ai: any, params: any, maxRetries = 2, js
         const isModelNotFoundError = message.includes("not found") || message.includes("not supported") || message.includes("unsupported") || message.includes("model");
         const isJsonError = message.includes("JSON format invalid");
         if ((status === 400 || message.includes("INVALID_ARGUMENT")) && !isModelNotFoundError && !isJsonError) {
-          console.error(`[Backend API] Bad Request (non-model error). Aborting fallback loop.`);
-          throw err;
+          console.error(`[Backend API] Bad Request (non-model error). Falling back to local responsive mock generator.`);
+          return generateLocalFallbackResponse(params.contents || "", jsonParser);
         }
 
         if (r < maxRetries - 1) {
@@ -1366,9 +1451,19 @@ Return ONLY pure JSON. Do not wrap in markdown blocks like \`\`\`json.`;
 // ----------------------------------------------------
 app.post("/api/brand-voice-analyze", async (req, res) => {
   try {
-    const { brandName, brandDescription, sampleText, targetAudience, language } = req.body;
-    if (!brandDescription || !brandDescription.trim()) {
-      return res.status(400).json({ success: false, error: "Brand description is required" });
+    const { brandName, brandDescription, sampleText, targetAudience, industry, brandValues, language } = req.body;
+    
+    const finalBrandName = brandName || (language === "ar" ? "علامة تجارية" : "My Brand");
+    const finalBrandDescription = brandDescription || industry || "";
+    const finalTargetAudience = targetAudience || (language === "ar" ? "الجمهور المستهدف العام" : "General Target Audience");
+    const finalBrandValues = brandValues || "";
+    const finalSampleText = sampleText || "";
+
+    if (!finalBrandDescription.trim() && !finalBrandValues.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        error: language === "ar" ? "يرجى تقديم وصف للعلامة التجارية أو مجال العمل." : "Brand description or industry is required" 
+      });
     }
 
     const ai = getAI();
@@ -1377,13 +1472,16 @@ app.post("/api/brand-voice-analyze", async (req, res) => {
     const systemPrompt = `You are a world-class brand strategist, copywriter, and linguistic anthropologist.
 Analyze the following brand details to construct a comprehensive, professional, and distinctive Brand Voice Style Guide.
 
-Brand Name: "${brandName || "Generic Brand"}"
-Brand Description: "${brandDescription}"
-Target Audience: "${targetAudience || "General Public"}"
-Optional Copy Sample: "${sampleText || "None provided"}"
+Brand Name: "${finalBrandName}"
+Brand Description: "${finalBrandDescription}"
+Core Brand Values: "${finalBrandValues || "Not specified"}"
+Target Audience: "${finalTargetAudience}"
+Optional Copy Sample of Existing Style: "${finalSampleText || "None provided"}"
 
 You must deliver the response in the requested language: ${language || "en"}.
-If "ar" is specified (Arabic), all fields, trait names, descriptions, style guidelines, channel guides, and before/after text must be in professional, elegant, modern, and copy-perfect Arabic (فصحى حديثة ممتازة).
+IMPORTANT:
+- If the requested language is "ar" (Arabic), ALL fields, values, trait names, descriptions, rules, examples, and text MUST be strictly in professional, elegant, and copy-perfect Arabic (فصحى حديثة). You are FORBIDDEN from including any English words, bracketed English translations, or mixed languages in any field. For example, use "المستكشف الملهم" and NOT "المستكشف الملهم (The Inspiring Explorer)".
+- If the requested language is "en" (English), ALL fields, values, names, and text MUST be strictly in professional English. Do not include any Arabic words or mixed characters.
 
 Perform deep brand voice modeling and compile:
 1. A unique, creative name for this specific voice style and a high-level summary.

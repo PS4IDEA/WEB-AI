@@ -14,9 +14,9 @@ import BlogFAQPages from './components/BlogFAQPages';
 import DashboardOverview from './components/DashboardOverview';
 import BusinessCardMaker from './components/services/BusinessCardMaker';
 import SocialMediaAssets from './components/services/SocialMediaAssets';
-import DomainChecker from './components/services/DomainChecker';
 import SeoOptimization from './components/services/SeoOptimization';
 import BrandVoice from './components/services/BrandVoice';
+import LogoMaker from './components/services/LogoMaker';
 import { sendWelcomeEmail, sendTestEmail } from './lib/emailService';
 import { 
   Sparkles, ShieldCheck, Coins, Users, Rocket, Target, 
@@ -61,6 +61,62 @@ export default function App() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('brandforge_language', language);
     }
+
+    // Dynamic SEO & Language Header Controller for Google Ranking
+    const isAr = language === 'ar';
+    
+    // 1. Update Document Title with high-relevance niche keywords
+    document.title = isAr 
+      ? "براند فورج ستوديو | تصميم الهوية التجارية وتوليد الشعارات بالذكاء الاصطناعي"
+      : "BrandForge Studio - AI Brand Identity, SVG Logo Maker & Brand Voice Architect";
+
+    // 2. Update HTML tag attributes for search crawlers & accessibility
+    document.documentElement.lang = language;
+    document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+
+    // 3. Update Meta Description dynamically
+    let metaDescription = document.querySelector('meta[name="description"]');
+    if (!metaDescription) {
+      metaDescription = document.createElement('meta');
+      metaDescription.setAttribute('name', 'description');
+      document.head.appendChild(metaDescription);
+    }
+    metaDescription.setAttribute('content', isAr
+      ? "صمم هويتك التجارية المتكاملة ونبرة صوت علامتك التجارية فوراً بالذكاء الاصطناعي: أسماء مبتكرة، شعارات SVG عالية الجودة، عبارات تسويقية، وتحليل الهوية اللغوية."
+      : "Create premium brand names, custom SVG logos, taglines, and design a cohesive Brand Voice playbook instantly with our AI-powered BrandForge Generator."
+    );
+
+    // 4. Update Meta Keywords dynamically
+    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (!metaKeywords) {
+      metaKeywords = document.createElement('meta');
+      metaKeywords.setAttribute('name', 'keywords');
+      document.head.appendChild(metaKeywords);
+    }
+    metaKeywords.setAttribute('content', isAr
+      ? "تصميم هوية تجارية, صانع الشعارات بالذكاء الاصطناعي, تصميم لوجو مجاني, مولد العبارات التسويقية, اختيار اسماء شركات, الهوية البصرية واللفظية, نبرة صوت العلامة التجارية, لوحات الالوان الرقمية, براند فورج"
+      : "brand generator, brand voice analyzer, ai logo maker, free svg logo generator, brand voice guide, color palette generator, slogan creator, brand identity builder, brandforge, startup branding, svg logo maker"
+    );
+
+    // 5. Update Open Graph Meta Tags for rich search index previews
+    const updateOgTag = (property: string, content: string) => {
+      let tag = document.querySelector(`meta[property="${property}"]`);
+      if (!tag) {
+        tag = document.createElement('meta');
+        tag.setAttribute('property', property);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute('content', content);
+    };
+
+    updateOgTag('og:title', isAr 
+      ? "براند فورج ستوديو | تصميم الهوية التجارية وتوليد الشعارات بالذكاء الاصطناعي" 
+      : "BrandForge Studio - AI Brand Identity, SVG Logo Maker & Brand Voice Architect"
+    );
+    updateOgTag('og:description', isAr
+      ? "صمم هويتك التجارية المتكاملة ونبرة صوت علامتك التجارية فوراً بالذكاء الاصطناعي: أسماء مبتكرة، شعارات SVG عالية الجودة، عبارات تسويقية، وتحليل الهوية اللغوية."
+      : "Create premium brand names, custom SVG logos, taglines, and design a cohesive Brand Voice playbook instantly with our AI-powered BrandForge Generator."
+    );
   }, [language]);
 
   const [darkMode, setDarkMode] = useState<boolean>(false);
@@ -94,6 +150,7 @@ export default function App() {
   const [isRegister, setIsRegister] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authDomainErrorDetails, setAuthDomainErrorDetails] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState(false);
 
   useEffect(() => {
     setAuthError(null);
@@ -132,7 +189,7 @@ export default function App() {
         setLanguage(urlLang);
       }
       
-      const validPages: Page[] = ['landing', 'features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy', 'dashboard', 'admin', 'business-cards', 'social-media', 'domain-checker', 'seo', 'brand-voice'];
+      const validPages: Page[] = ['landing', 'features', 'pricing', 'blog', 'faq', 'contact', 'terms', 'privacy', 'dashboard', 'admin', 'business-cards', 'social-media', 'seo', 'logo-maker'];
       if (urlPage && validPages.includes(urlPage as Page)) {
         setCurrentPage(urlPage as Page);
       }
@@ -434,6 +491,15 @@ export default function App() {
   // Run onboarding tour for new logins removed for React 19 compatibility
 
   // 3. Simulated & Real Firebase Auth Handlers
+  const handleCopyDomain = () => {
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app';
+    navigator.clipboard.writeText(hostname);
+    setCopiedDomain(true);
+    setTimeout(() => {
+      setCopiedDomain(false);
+    }, 2000);
+  };
+
   const handleGoogleLogin = async () => {
     setAuthError(null);
     setAuthDomainErrorDetails(false);
@@ -445,12 +511,22 @@ export default function App() {
       console.error("Google Auth error:", err);
       const isDomainError = err.code === 'auth/unauthorized-domain' || 
                             (err.message && err.message.includes('unauthorized-domain'));
+      const isPopupClosed = err.code === 'auth/popup-closed-by-user' ||
+                            err.code === 'auth/cancelled-popup-request' ||
+                            (err.message && (err.message.includes('popup-closed-by-user') || err.message.includes('cancelled-popup-request')));
+
       if (isDomainError) {
         setAuthDomainErrorDetails(true);
         setAuthError(
           language === 'ar' 
             ? 'هذا النطاق غير مصرح به في إعدادات مشروع Firebase الخاص بك.'
             : 'This domain is not authorized in your Firebase Project settings.'
+        );
+      } else if (isPopupClosed) {
+        setAuthError(
+          language === 'ar'
+            ? 'تم إغلاق نافذة تسجيل الدخول قبل إتمام العملية. يمكنك المحاولة مجدداً في أي وقت.'
+            : 'The sign-in window was closed before completion. You can try again anytime.'
         );
       } else {
         setAuthError(err.message || (language === 'ar' ? 'حدث خطأ في مصادقة Google. الرجاء المحاولة مرة أخرى.' : 'Google authentication error occurred. Please try again.'));
@@ -1260,17 +1336,17 @@ export default function App() {
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-100/30 dark:shadow-none space-y-8">
                 
                 {/* 🌟 MOST POPULAR / PREMIUM GOLDEN SERVICE: BRAND VOICE ARCHITECT */}
-                <div id="tour-brand-voice" className="relative p-0.5 rounded-[2rem] bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 shadow-2xl shadow-amber-500/10 overflow-hidden">
+                <div id="tour-brand-voice" className="relative p-1 rounded-[2rem] bg-gradient-to-r from-amber-300 via-yellow-500 to-amber-600 shadow-2xl shadow-amber-500/20 overflow-hidden">
                   {/* Glowing background highlights */}
-                  <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
-                  <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+                  <div className="absolute top-0 right-0 w-80 h-80 bg-amber-400/20 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
                   
-                  <div className="bg-slate-50 dark:bg-slate-950 rounded-[1.95rem] p-6 sm:p-10 relative z-10 space-y-6">
+                  <div className="bg-slate-50 dark:bg-slate-950 rounded-[1.90rem] p-6 sm:p-10 relative z-10 space-y-6">
                     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-500/15 pb-6">
                       <div className="space-y-1">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-950 font-black rounded-full text-[10px] uppercase tracking-wider shadow-md animate-bounce">
                           <Sparkles className="w-3.5 h-3.5" />
-                          {language === 'ar' ? 'الخدمة الذهبية الأكثر طلباً ⭐' : 'MOST POPULAR GOLDEN SERVICE ⭐'}
+                          {language === 'ar' ? 'الخدمة الذهبية المميزة ⭐' : 'PREMIUM GOLDEN SERVICE ⭐'}
                         </div>
                         <h3 className="text-2xl sm:text-3xl font-display font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                           {language === 'ar' ? 'مساعد نبرة الصوت والهوية اللغوية' : 'Linguistic Brand Voice Architect'}
@@ -1280,11 +1356,6 @@ export default function App() {
                             ? 'صمم دليلاً لغوياً استثنائياً لعلامتك التجارية بالكامل وحلّل أسلوب الكتابة المناسب لجمهورك (يكلف 3 نقاط رصيد)' 
                             : 'Architect a custom brand voice playbook, analyze writing styles, and craft cohesive guidelines (Costs 3 credits)'}
                         </p>
-                      </div>
-                      <div className="hidden sm:block">
-                        <span className="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold rounded-lg text-xs uppercase tracking-widest">
-                          Premium AI Model
-                        </span>
                       </div>
                     </div>
 
@@ -1418,14 +1489,6 @@ export default function App() {
             onOpenLogin={() => setShowAuthModal(true)}
           />
         )}
-        {currentPage === 'domain-checker' && (
-          <DomainChecker 
-            language={language} 
-            user={user}
-            onDeductCredits={deductCredits}
-            onOpenLogin={() => setShowAuthModal(true)}
-          />
-        )}
         {currentPage === 'seo' && (
           <SeoOptimization 
             language={language} 
@@ -1434,12 +1497,13 @@ export default function App() {
             onOpenLogin={() => setShowAuthModal(true)}
           />
         )}
-        {currentPage === 'brand-voice' && (
-          <BrandVoice 
+        {currentPage === 'logo-maker' && (
+          <LogoMaker 
             language={language} 
             user={user}
             onDeductCredits={deductCredits}
             onOpenLogin={() => setShowAuthModal(true)}
+            onSaveLogo={handleSaveLogo}
           />
         )}
 
@@ -1542,28 +1606,48 @@ export default function App() {
                     {language === 'ar' ? (
                       <>
                         <p className="font-bold text-slate-700 dark:text-slate-200">لحل هذه المشكلة في أقل من دقيقة:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400">
+                        <ol className="list-decimal list-inside space-y-1.5 text-slate-500 dark:text-slate-400">
                           <li>اذهب إلى <a href="https://console.firebase.google.com/project/brandforge-ai-c0449/authentication/providers" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">لوحة تحكم Firebase لمشروعك</a>.</li>
                           <li>تحت قسم <b>Authorized domains</b>، اضغط على <b>Add domain</b>.</li>
-                          <li>أدخل اسم النطاق التالي بدقة:</li>
+                          <li>انسخ النطاق التالي بدقة وضعه هناك:</li>
                         </ol>
-                        <div className="bg-slate-100 dark:bg-slate-950 p-2 rounded-lg font-mono text-center font-bold text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 select-all">
-                          {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                        <div className="flex gap-2 mt-2">
+                          <div className="flex-grow bg-slate-100 dark:bg-slate-950 p-2 rounded-xl font-mono text-center font-bold text-xs text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 break-all select-all">
+                            {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCopyDomain}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition flex items-center gap-1 shrink-0"
+                          >
+                            {copiedDomain ? <Check className="w-3.5 h-3.5" /> : null}
+                            <span>{copiedDomain ? 'تم النسخ!' : 'نسخ'}</span>
+                          </button>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">ثم أعد تحميل الصفحة وحاول مجدداً!</p>
+                        <p className="text-[10px] text-slate-400 mt-2">ثم أعد تحميل الصفحة وحاول مجدداً!</p>
                       </>
                     ) : (
                       <>
                         <p className="font-bold text-slate-700 dark:text-slate-200">To resolve this error in less than a minute:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-slate-500 dark:text-slate-400">
+                        <ol className="list-decimal list-inside space-y-1.5 text-slate-500 dark:text-slate-400">
                           <li>Go to your <a href="https://console.firebase.google.com/project/brandforge-ai-c0449/authentication/providers" target="_blank" rel="noreferrer" className="text-indigo-600 dark:text-indigo-400 underline font-semibold">Firebase Console Auth Settings</a>.</li>
                           <li>Scroll to <b>Authorized domains</b> and click <b>Add domain</b>.</li>
-                          <li>Enter this exact domain name:</li>
+                          <li>Copy this exact domain name and add it there:</li>
                         </ol>
-                        <div className="bg-slate-100 dark:bg-slate-950 p-2 rounded-lg font-mono text-center font-bold text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 select-all">
-                          {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                        <div className="flex gap-2 mt-2">
+                          <div className="flex-grow bg-slate-100 dark:bg-slate-950 p-2 rounded-xl font-mono text-center font-bold text-xs text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800 break-all select-all">
+                            {typeof window !== 'undefined' ? window.location.hostname : 'brandforge.run.app'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleCopyDomain}
+                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition flex items-center gap-1 shrink-0"
+                          >
+                            {copiedDomain ? <Check className="w-3.5 h-3.5" /> : null}
+                            <span>{copiedDomain ? 'Copied!' : 'Copy'}</span>
+                          </button>
                         </div>
-                        <p className="text-[10px] text-slate-400 mt-1">Then reload this page and try again!</p>
+                        <p className="text-[10px] text-slate-400 mt-2">Then reload this page and try again!</p>
                       </>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { translations } from '../translations';
 import { Language, Page, UserProfile } from '../types';
-import { Sparkles, Sun, Moon, LogOut, User, ShieldCheck, Coins, Menu, X, RefreshCw } from 'lucide-react';
+import { Sparkles, Sun, Moon, LogOut, User, ShieldCheck, Coins, Menu, X } from 'lucide-react';
 
 interface HeaderProps {
   language: Language;
@@ -120,6 +120,10 @@ export default function Header({
               {/* Dropdown Menu */}
               <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 transform origin-top translate-y-2 group-hover:translate-y-0">
                 <div className="p-2 flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
+                  <button onClick={() => handleNavClick('logo-maker')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></div>
+                    {language === 'ar' ? 'تصميم شعار احترافي 3D وعادي' : '3D & Flat Logo Maker'}
+                  </button>
                   <button onClick={() => handleNavClick('business-cards')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                     {language === 'ar' ? 'تصميم بطاقات العمل' : 'Business Card Maker'}
@@ -127,10 +131,6 @@ export default function Header({
                   <button onClick={() => handleNavClick('social-media')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     <div className="w-2 h-2 rounded-full bg-pink-500"></div>
                     {language === 'ar' ? 'أصول السوشيال ميديا' : 'Social Media Assets'}
-                  </button>
-                  <button onClick={() => handleNavClick('domain-checker')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    {language === 'ar' ? 'فحص توفر الدومين' : 'Domain Name Checker'}
                   </button>
                   <button onClick={() => handleNavClick('seo')} className="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     <div className="w-2 h-2 rounded-full bg-amber-500"></div>
@@ -169,16 +169,6 @@ export default function Header({
               className="hidden sm:block text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 cursor-pointer"
             >
               {language === 'en' ? 'العربية' : 'English'}
-            </button>
-
-            {/* Elegant Reload Button */}
-            <button
-              onClick={onRefresh}
-              className="hidden sm:block p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all cursor-pointer group"
-              title={language === 'ar' ? 'إعادة تحميل وتحديث الموقع' : 'Reload & Sync Website'}
-              aria-label="Reload and Sync Website"
-            >
-              <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
             </button>
 
             {/* Dark Mode Toggle */}
@@ -257,9 +247,9 @@ export default function Header({
           
           <div className="flex flex-col gap-2 px-4 py-2 border-l-2 border-indigo-100 dark:border-indigo-900/30 ml-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{language === 'ar' ? 'خدمات إضافية' : 'Additional Services'}</span>
+            <button onClick={() => handleNavClick('logo-maker')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'تصميم شعار احترافي 3D وعادي' : '3D & Flat Logo Maker'}</button>
             <button onClick={() => handleNavClick('business-cards')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'تصميم بطاقات العمل' : 'Business Card Maker'}</button>
             <button onClick={() => handleNavClick('social-media')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'أصول السوشيال ميديا' : 'Social Media Assets'}</button>
-            <button onClick={() => handleNavClick('domain-checker')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'فحص توفر الدومين' : 'Domain Name Checker'}</button>
             <button onClick={() => handleNavClick('seo')} className="text-left text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400">{language === 'ar' ? 'تحسين محركات البحث SEO' : 'SEO Optimization'}</button>
           </div>
 
@@ -287,13 +277,6 @@ export default function Header({
           <div className="flex items-center justify-between px-4 py-2">
             <span className="text-sm text-slate-500 dark:text-slate-400">Settings</span>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => { onRefresh(); setIsMobileMenuOpen(false); }}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                title={language === 'ar' ? 'إعادة تحميل' : 'Reload'}
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
               <button
                 onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
                 className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-slate-700 dark:text-slate-300 cursor-pointer"
